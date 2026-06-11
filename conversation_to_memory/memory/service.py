@@ -1,0 +1,197 @@
+"""OpenAI 기반 기억 아카이브 분석 및 추출."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+from typing import Any
+
+from openai import OpenAI
+
+from conversation_to_memory.memory.fidelity import validate_draft
+
+PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+
+DEFAULT_DRAFT: dict[str, Any] = {
+    "topic": "",
+    "event_summary": "",
+    "user_emotions": [],
+    "emotion_evidence": [],
+    "people": [],
+    "projects": [],
+    "tags": [],
+    "memory_candidate": "",
+    "interpretation_risk": "low",
+    "unsupported_inferences": [],
+    "needs_followup": False,
+    "followup_question": "",
+}
+
+
+def _load_prompt(filename: str) -> str:
+    return (PROMPTS_DIR / filename).read_text(encoding="utf-8")
+
+
+def _get_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
+    return OpenAI(api_key=api_key)
+
+
+def _get_model() -> str:
+    return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+
+def _conversation_to_messages(conversation: list[dict]) -> list[dict]:
+    return [{"role": turn["role"], "content": turn["content"]} for turn in conversation]
+
+
+def _build_context_block(
+    *,
+    recent_context: list[dict] | None = None,
+    cancelled_draft: dict | None = None,
+    cancellation_reason: str = "",
+    followup_already_asked: bool = False,
+) -> str:
+    parts: list[str] = []
+
+    if recent_context:
+        parts.append("## 최근 기록 맥락")
+        for idx, ctx in enumerate(recent_context[-3:], 1):
+            parts.append(f"{idx}. 사용자: {' '.join(ctx.get('user_texts', []))}")
+            parts.append(f"   요약: {ctx.get('event_summary', '')}")
+
+    if cancelled_draft:
+        parts.append("## 이전 취소된 초안")
+        parts.append(f"주제: {cancelled_draft.get('topic', '')}")
+        parts.append(f"요약: {cancelled_draft.get('event_summary', '')}")
+        if cancellation_reason:
+            parts.append(f"취소 당시 사용자 발화: {cancellation_reason}")
+
+    if followup_already_asked:
+        parts.append("## 제약")
+        parts.append("후속 질문은 이미 1회 사용됨. needs_followup=false, followup_question=\"\" 로 설정.")
+
+    return "\n".join(parts)
+
+
+def normalize_draft(data: dict) -> dict:
+    draft = {**DEFAULT_DRAFT}
+    draft.update(data)
+    draft["user_emotions"] = list(draft.get("user_emotions") or [])
+    draft["emotion_evidence"] = list(draft.get("emotion_evidence") or [])
+    draft["people"] = list(draft.get("people") or [])
+    draft["projects"] = list(draft.get("projects") or [])
+    draft["tags"] = list(draft.get("tags") or [])
+    draft["unsupported_inferences"] = list(draft.get("unsupported_inferences") or [])
+    draft["needs_followup"] = bool(draft.get("needs_followup"))
+    risk = draft.get("interpretation_risk", "low")
+    if risk not in ("low", "medium", "high"):
+        risk = "low"
+    draft["interpretation_risk"] = risk
+    if not draft["needs_followup"]:
+        draft["followup_question"] = ""
+    return draft
+
+
+def analyze_recording(
+    *,
+    user_texts: list[str],
+    conversation: list[dict] | None = None,
+    recent_context: list[dict] | None = None,
+    cancelled_draft: dict | None = None,
+    cancellation_reason: str = "",
+    followup_already_asked: bool = False,
+    edit_instruction: str = "",
+) -> dict:
+    """사용자 원문을 분석해 draft JSON 생성."""
+    client = _get_client()
+    system = _load_prompt("memory_archive_system_prompt.txt")
+    source_text = "\n".join(user_texts)
+
+    context_block = _build_context_block(
+        recent_context=recent_context,
+        cancelled_draft=cancelled_draft,
+        cancellation_reason=cancellation_reason,
+        followup_already_asked=followup_already_asked,
+    )
+
+    user_content_parts = [
+        "아래 사용자 원문을 기억 아카이브 초안 JSON으로 정리하세요.",
+        f"## 사용자 원문\n{source_text}",
+    ]
+    if context_block:
+        user_content_parts.append(context_block)
+    if edit_instruction:
+        user_content_parts.append(f"## 수정 요청\n{edit_instruction}")
+    if conversation:
+        user_content_parts.append("## 추가 대화")
+        for turn in conversation:
+            role = "사용자" if turn["role"] == "user" else "봇"
+            user_content_parts.append(f"{role}: {turn['content']}")
+
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": "\n\n".join(user_content_parts)},
+    ]
+
+    response = client.chat.completions.create(
+        model=_get_model(),
+        messages=messages,
+        temperature=0.2,
+        max_tokens=1200,
+        response_format={"type": "json_object"},
+    )
+
+    raw = response.choices[0].message.content.strip()
+    data = json.loads(raw)
+    draft = normalize_draft(data)
+    return validate_draft(draft, source_text)
+
+
+def extract_memory(conversation: list[dict]) -> dict:
+    """하위 호환: 대화 목록에서 user 텍스트 추출 후 analyze_recording 호출."""
+    user_texts = [t["content"] for t in conversation if t["role"] == "user"]
+    return analyze_recording(user_texts=user_texts, conversation=conversation)
+
+
+def format_review_message(memory: dict) -> str:
+    """저장 전 사용자에게 보여줄 요약 + JSON 텍스트."""
+    preview = {
+        "topic": memory.get("topic"),
+        "event_summary": memory.get("event_summary"),
+        "user_emotions": memory.get("user_emotions"),
+        "emotion_evidence": memory.get("emotion_evidence"),
+        "people": memory.get("people"),
+        "projects": memory.get("projects"),
+        "tags": memory.get("tags"),
+        "memory_candidate": memory.get("memory_candidate"),
+        "interpretation_risk": memory.get("interpretation_risk"),
+        "unsupported_inferences": memory.get("unsupported_inferences"),
+    }
+    json_str = json.dumps(preview, ensure_ascii=False, indent=2)
+
+    risk = memory.get("interpretation_risk", "low")
+    risk_note = ""
+    if risk != "low":
+        risk_note = f"\n⚠️ 해석 위험도: {risk}\n"
+
+    unsupported = memory.get("unsupported_inferences") or []
+    unsupported_note = ""
+    if unsupported:
+        unsupported_note = (
+            f"\n⚠️ 원문 근거 약한 추론: {', '.join(unsupported)}\n"
+        )
+
+    return (
+        "📋 기록 요약\n"
+        f"{memory.get('event_summary', '')}\n"
+        f"{risk_note}{unsupported_note}\n"
+        "📦 구조화 JSON\n"
+        f"{json_str}\n\n"
+        "저장하려면 「저장」을 입력하세요.\n"
+        "수정하려면 「수정」과 함께 고칠 내용을 입력하세요.\n"
+        "취소하려면 「취소」를 입력하세요."
+    )
