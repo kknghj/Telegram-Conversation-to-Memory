@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 
 from app import database as db
 from conversation_to_memory.bot import session, states
+from conversation_to_memory.memory import question as question_service
 from conversation_to_memory.memory import service as memory_service
 from conversation_to_memory.storage.local_json import LocalJsonStorage
 
@@ -78,10 +79,15 @@ def _persist_cancelled_draft(
 
 
 def _recording_prompt() -> str:
+    followup_note = (
+        "필요하면 짧은 후속 질문이 이어질 수 있습니다."
+        if question_service.is_reflection_agent_enabled()
+        else "필요 시 정확도 확인 질문 1개가 있을 수 있습니다."
+    )
     return (
         "있는 그대로 기록해 주세요. 오늘 있었던 일, 감정, 생각을 자유롭게 적어주세요.\n"
-        "다 적으셨으면 「요약」이라고 입력하세요.\n"
-        "(상담·조언·성장 서사가 아닌, 원문 기반 정리만 합니다.)"
+        f"다 적으셨으면 「요약」이라고 입력하세요.\n"
+        f"({followup_note} 상담·조언·성장 서사가 아닌, 원문 기반 정리만 합니다.)"
     )
 
 
@@ -91,7 +97,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         "안녕하세요. 기억 아카이브 봇입니다.\n\n"
         "상담봇이나 자기계발 일기봇이 아니라, 말한 내용을 있는 그대로 정리·보관합니다.\n\n"
         f"기록을 시작하려면 「{BEGIN_KEYWORD}」을 입력하세요.\n"
-        "자유롭게 기록 → (필요 시 질문 1개) → 요약 확인 → 「저장」"
+        "자유롭게 기록 → (필요 시 질문) → 요약 확인 → 「저장」"
     )
     return ConversationHandler.END
 
@@ -230,11 +236,60 @@ async def handle_recording(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return states.RECORDING
 
 
+async def _send_review(
+    update: Update,
+    draft: dict,
+) -> int:
+    review_text = memory_service.format_review_message(draft)
+    await update.message.reply_text(review_text)
+    return states.REVIEW
+
+
+async def _maybe_reflection_followup_or_review(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    draft: dict,
+) -> int:
+    qsession = session.ensure_question_session(context)
+    if qsession["questions_asked"] >= question_service.get_max_questions():
+        return await _send_review(update, draft)
+
+    sess = session.ensure_session(context)
+    result = question_service.generate_question(
+        user_texts=sess["user_texts"],
+        conversation=sess["conversation"],
+        draft=draft,
+        question_session=qsession,
+        recent_context=session.get_recent_context(context),
+    )
+    draft = question_service.merge_question_into_draft(draft, result)
+    session.set_draft(context, draft)
+
+    if result.get("needs_followup") and result.get("followup_question"):
+        session.record_question(context, draft, result)
+        sess["conversation"].append(
+            {"role": "assistant", "content": result["followup_question"]}
+        )
+        db.save_active_draft(
+            _user_id(update),
+            user_texts=sess["user_texts"],
+            conversation=sess["conversation"],
+            draft=draft,
+        )
+        await update.message.reply_text(result["followup_question"])
+        return states.FOLLOWUP
+
+    return await _send_review(update, draft)
+
+
 async def _maybe_followup_or_review(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     draft: dict,
 ) -> int:
+    if question_service.is_reflection_agent_enabled():
+        return await _maybe_reflection_followup_or_review(update, context, draft)
+
     followup_asked = context.user_data.get(session.KEY_FOLLOWUP_ASKED, False)
     needs_followup = draft.get("needs_followup") and draft.get("followup_question")
 
@@ -246,9 +301,7 @@ async def _maybe_followup_or_review(
         await update.message.reply_text(question)
         return states.FOLLOWUP
 
-    review_text = memory_service.format_review_message(draft)
-    await update.message.reply_text(review_text)
-    return states.REVIEW
+    return await _send_review(update, draft)
 
 
 async def handle_followup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -271,9 +324,9 @@ async def handle_followup(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             conversation=sess["conversation"],
             draft=draft,
         )
-        review_text = memory_service.format_review_message(draft)
-        await update.message.reply_text(review_text)
-        return states.REVIEW
+        if question_service.is_reflection_agent_enabled():
+            return await _maybe_reflection_followup_or_review(update, context, draft)
+        return await _send_review(update, draft)
     except Exception as e:
         logger.exception("후속 답변 처리 오류")
         await update.message.reply_text(f"오류: {e}")

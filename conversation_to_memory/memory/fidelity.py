@@ -41,6 +41,7 @@ def detect_unsupported_inferences(draft: dict, source_text: str) -> list[str]:
     searchable_fields = [
         draft.get("event_summary", ""),
         draft.get("memory_candidate", ""),
+        draft.get("model_interpretation", ""),
         " ".join(draft.get("user_emotions", [])),
     ]
     combined_output = " ".join(str(v) for v in searchable_fields)

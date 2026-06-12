@@ -12,6 +12,7 @@ KEY_CANCELLED_DRAFT = "cancelled_draft"
 KEY_CANCELLATION_REASON = "cancellation_reason"
 KEY_RECENT_CONTEXT = "recent_context"
 KEY_FOLLOWUP_ASKED = "followup_asked"
+KEY_QUESTION_SESSION = "question_session"
 KEY_PERSISTED_DRAFT_ID = "persisted_draft_id"
 
 CANCEL_MESSAGE = (
@@ -64,6 +65,37 @@ def get_recent_context(context: ContextTypes.DEFAULT_TYPE) -> list[dict[str, Any
     return context.user_data.setdefault(KEY_RECENT_CONTEXT, [])
 
 
+def ensure_question_session(context: ContextTypes.DEFAULT_TYPE) -> dict[str, Any]:
+    qsession = context.user_data.get(KEY_QUESTION_SESSION)
+    if qsession is None:
+        qsession = {
+            "questions_asked": 0,
+            "question_modes_used": [],
+            "meaning_check_count": 0,
+            "last_question_mode": None,
+        }
+        context.user_data[KEY_QUESTION_SESSION] = qsession
+    return qsession
+
+
+def record_question(
+    context: ContextTypes.DEFAULT_TYPE,
+    draft: dict[str, Any],
+    question_result: dict[str, Any],
+) -> dict[str, Any]:
+    """질문 1회를 세션에 기록하고 draft.question_mode_used를 갱신."""
+    qsession = ensure_question_session(context)
+    mode = question_result.get("question_mode")
+    qsession["questions_asked"] += 1
+    if mode:
+        qsession["question_modes_used"].append(mode)
+        qsession["last_question_mode"] = mode
+    if mode == "meaning_check":
+        qsession["meaning_check_count"] += 1
+    draft["question_mode_used"] = list(qsession["question_modes_used"])
+    return qsession
+
+
 def append_recent_context(
     context: ContextTypes.DEFAULT_TYPE,
     *,
@@ -104,6 +136,7 @@ def cancel_current_draft(
 
     context.user_data.pop(KEY_CURRENT_SESSION, None)
     context.user_data.pop(KEY_FOLLOWUP_ASKED, None)
+    context.user_data.pop(KEY_QUESTION_SESSION, None)
 
 
 def clear_cancelled_draft(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -140,6 +173,7 @@ def reset_recording_session(context: ContextTypes.DEFAULT_TYPE) -> None:
         KEY_CURRENT_SESSION,
         KEY_CURRENT_DRAFT,
         KEY_FOLLOWUP_ASKED,
+        KEY_QUESTION_SESSION,
     ):
         context.user_data.pop(key, None)
 
@@ -152,6 +186,7 @@ def reset_all(context: ContextTypes.DEFAULT_TYPE) -> None:
         KEY_CANCELLATION_REASON,
         KEY_RECENT_CONTEXT,
         KEY_FOLLOWUP_ASKED,
+        KEY_QUESTION_SESSION,
         KEY_PERSISTED_DRAFT_ID,
     ):
         context.user_data.pop(key, None)

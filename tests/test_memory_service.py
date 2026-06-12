@@ -73,3 +73,30 @@ def test_normalize_draft_default_fields():
     draft = normalize_draft({})
     assert draft["user_emotions"] == []
     assert draft["interpretation_risk"] == "low"
+    assert draft["key_phrases"] == []
+    assert draft["model_interpretation"] == ""
+    assert draft["memory_type"] == "event"
+    assert draft["reflection_value"] == "medium"
+
+
+def test_format_review_message_shows_model_interpretation():
+    from conversation_to_memory.memory.service import format_review_message
+
+    text = format_review_message(
+        {
+            "event_summary": "요약",
+            "model_interpretation": "사용자가 기다림에 더 민감하게 반응한 것으로 읽힘",
+            "topic": "t",
+            "user_emotions": [],
+            "emotion_evidence": [],
+            "people": [],
+            "projects": [],
+            "tags": [],
+            "memory_candidate": "본문",
+            "interpretation_risk": "low",
+            "unsupported_inferences": [],
+        }
+    )
+    assert "에이전트 해석" in text
+    assert "기다림" in text
+    assert "본문" in text
