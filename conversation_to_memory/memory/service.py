@@ -10,8 +10,13 @@ from typing import Any
 from openai import OpenAI
 
 from conversation_to_memory.memory.fidelity import validate_draft
+from conversation_to_memory.memory.question import is_reflection_agent_enabled
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+
+VALID_MEMORY_TYPES = frozenset(
+    {"event", "observation", "relation", "pattern", "reflection_seed"}
+)
 
 DEFAULT_DRAFT: dict[str, Any] = {
     "topic": "",
@@ -22,6 +27,13 @@ DEFAULT_DRAFT: dict[str, Any] = {
     "projects": [],
     "tags": [],
     "memory_candidate": "",
+    "model_interpretation": "",
+    "key_phrases": [],
+    "emerging_themes": [],
+    "open_questions": [],
+    "reflection_value": "medium",
+    "memory_type": "event",
+    "question_mode_used": [],
     "interpretation_risk": "low",
     "unsupported_inferences": [],
     "needs_followup": False,
@@ -85,13 +97,33 @@ def normalize_draft(data: dict) -> dict:
     draft["people"] = list(draft.get("people") or [])
     draft["projects"] = list(draft.get("projects") or [])
     draft["tags"] = list(draft.get("tags") or [])
+    draft["key_phrases"] = list(draft.get("key_phrases") or [])
+    draft["emerging_themes"] = list(draft.get("emerging_themes") or [])
+    draft["open_questions"] = list(draft.get("open_questions") or [])
+    draft["question_mode_used"] = list(draft.get("question_mode_used") or [])
     draft["unsupported_inferences"] = list(draft.get("unsupported_inferences") or [])
+    draft["model_interpretation"] = str(draft.get("model_interpretation") or "").strip()
+
+    reflection_value = draft.get("reflection_value", "medium")
+    if reflection_value not in ("low", "medium", "high"):
+        reflection_value = "medium"
+    draft["reflection_value"] = reflection_value
+
+    memory_type = draft.get("memory_type", "event")
+    if memory_type not in VALID_MEMORY_TYPES:
+        memory_type = "event"
+    draft["memory_type"] = memory_type
+
     draft["needs_followup"] = bool(draft.get("needs_followup"))
     risk = draft.get("interpretation_risk", "low")
     if risk not in ("low", "medium", "high"):
         risk = "low"
     draft["interpretation_risk"] = risk
-    if not draft["needs_followup"]:
+
+    if is_reflection_agent_enabled():
+        draft["needs_followup"] = False
+        draft["followup_question"] = ""
+    elif not draft["needs_followup"]:
         draft["followup_question"] = ""
     return draft
 
@@ -122,6 +154,12 @@ def analyze_recording(
         "아래 사용자 원문을 기억 아카이브 초안 JSON으로 정리하세요.",
         f"## 사용자 원문\n{source_text}",
     ]
+    if is_reflection_agent_enabled():
+        user_content_parts.append(
+            "## 제약\n"
+            "후속 질문은 별도 단계에서 생성한다. "
+            "needs_followup=false, followup_question=\"\" 로 설정하라."
+        )
     if context_block:
         user_content_parts.append(context_block)
     if edit_instruction:
@@ -168,6 +206,11 @@ def format_review_message(memory: dict) -> str:
         "projects": memory.get("projects"),
         "tags": memory.get("tags"),
         "memory_candidate": memory.get("memory_candidate"),
+        "key_phrases": memory.get("key_phrases"),
+        "emerging_themes": memory.get("emerging_themes"),
+        "open_questions": memory.get("open_questions"),
+        "reflection_value": memory.get("reflection_value"),
+        "memory_type": memory.get("memory_type"),
         "interpretation_risk": memory.get("interpretation_risk"),
         "unsupported_inferences": memory.get("unsupported_inferences"),
     }
@@ -185,10 +228,15 @@ def format_review_message(memory: dict) -> str:
             f"\n⚠️ 원문 근거 약한 추론: {', '.join(unsupported)}\n"
         )
 
+    interpretation = (memory.get("model_interpretation") or "").strip()
+    interpretation_note = ""
+    if interpretation:
+        interpretation_note = f"\n💭 에이전트 해석\n{interpretation}\n"
+
     return (
         "📋 기록 요약\n"
         f"{memory.get('event_summary', '')}\n"
-        f"{risk_note}{unsupported_note}\n"
+        f"{risk_note}{unsupported_note}{interpretation_note}\n"
         "📦 구조화 JSON\n"
         f"{json_str}\n\n"
         "저장하려면 「저장」을 입력하세요.\n"
