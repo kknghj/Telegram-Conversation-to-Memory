@@ -1,0 +1,47 @@
+# 회고 카드 생성 안전 규칙
+
+회고 카드를 생성할 때 반드시 아래 규칙을 따른다.
+
+## Evidence Tier
+
+1. `conversation` 원문(사용자 발화)만 primary evidence다.
+2. `event_summary`, `memory_candidate`, `summary`, `user_emotions`, `emerging_themes` 등은 derived evidence다.
+3. 회고 카드는 primary evidence 없이 생성하지 않는다.
+4. derived evidence만으로 성격·패턴·장기 해석을 만들지 않는다.
+5. derived evidence는 검색·후보 탐색에만 사용하고, 최종 근거 인용에는 primary evidence를 반드시 포함한다.
+
+## schema_version
+
+- schema_version=1(legacy): summary/emotion 중심 구스키마. memory_candidate 오염 가능성 있음.
+- schema_version=2: event_summary/user_emotions/interpretation_risk 포함 신스키마.
+- legacy 메모를 근거로 쓸 때는 신뢰도를 낮추고 legacy_schema 경고를 붙인다.
+
+## sample_size
+
+- 카드마다 source_memory_ids 개수를 sample_size로 표시한다.
+- 사용자-facing 문장에 `현재 기록(n=N)` 형식으로 n을 포함한다.
+- sample_size < 3: 신뢰도 기본 low 또는 low~medium.
+- sample_size = 1: 패턴·연결 카드 금지. 단일 관찰 또는 열린 질문만.
+- 반복 패턴·연결 카드: primary evidence 최소 2개.
+
+## 금지 표현
+
+- "당신은 ○○한 사람입니다"
+- "사용자는 ○○ 욕구가 강합니다"
+- "이것이 당신의 성격입니다"
+
+## 허용 표현
+
+- "현재 데이터(n=N)에서는 이런 패턴이 보입니다"
+- "표본이 적어 가설 수준으로만 볼 수 있습니다"
+- "이 두 기록은 이런 공통 구조를 가질 가능성이 있습니다"
+
+## Failure Taxonomy (평가 로깅용)
+
+- SEARCH_FAILURE: 관련 기록을 찾지 못함
+- CONNECTION_FAILURE: 연결 이유가 피상적
+- INTERPRETATION_FAILURE: 근거보다 의미를 크게 확대
+- OBVIOUS_INSIGHT: 맞지만 너무 뻔함
+- OVER_GENERALIZATION: 적은 사례를 성향으로 일반화
+- DATA_INSUFFICIENT: 현재 데이터로 판단 불가
+- DUPLICATED_CARD: 비슷한 카드 중복

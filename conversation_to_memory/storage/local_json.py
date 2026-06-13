@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 
+from conversation_to_memory.reflection.schema import CURRENT_SCHEMA_VERSION
+
 # 프로젝트 루트 기준 data/memories/
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_MEMORIES_DIR = PROJECT_ROOT / "data" / "memories"
@@ -33,6 +35,7 @@ class LocalJsonStorage(MemoryStorage):
         payload = {
             "timestamp": timestamp.isoformat(),
             **memory,
+            "schema_version": memory.get("schema_version", CURRENT_SCHEMA_VERSION),
             "approved": True,
         }
 

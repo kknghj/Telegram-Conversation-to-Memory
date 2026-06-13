@@ -32,4 +32,5 @@ def test_save_creates_json_file():
 
         assert saved["topic"] == "테스트"
         assert saved["approved"] is True
+        assert saved["schema_version"] == 2
         assert "timestamp" in saved
