@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from telegram.ext import ContextTypes
-
 KEY_CURRENT_SESSION = "current_session"
 KEY_CURRENT_DRAFT = "current_draft"
 KEY_CANCELLED_DRAFT = "cancelled_draft"
@@ -33,40 +31,40 @@ NO_DRAFT_TO_EDIT_MESSAGE = "수정할 임시 초안이 없습니다."
 EDIT_KEYWORDS = ("수정", "이전 기록 수정", "취소한 기록 수정")
 
 
-def get_session(context: ContextTypes.DEFAULT_TYPE) -> dict[str, Any] | None:
-    return context.user_data.get(KEY_CURRENT_SESSION)
+def get_session(user_data: dict[str, Any]) -> dict[str, Any] | None:
+    return user_data.get(KEY_CURRENT_SESSION)
 
 
-def ensure_session(context: ContextTypes.DEFAULT_TYPE) -> dict[str, Any]:
-    session = context.user_data.get(KEY_CURRENT_SESSION)
+def ensure_session(user_data: dict[str, Any]) -> dict[str, Any]:
+    session = user_data.get(KEY_CURRENT_SESSION)
     if session is None:
         session = {"conversation": [], "user_texts": []}
-        context.user_data[KEY_CURRENT_SESSION] = session
+        user_data[KEY_CURRENT_SESSION] = session
     return session
 
 
-def get_draft(context: ContextTypes.DEFAULT_TYPE) -> dict[str, Any] | None:
-    return context.user_data.get(KEY_CURRENT_DRAFT)
+def get_draft(user_data: dict[str, Any]) -> dict[str, Any] | None:
+    return user_data.get(KEY_CURRENT_DRAFT)
 
 
-def set_draft(context: ContextTypes.DEFAULT_TYPE, draft: dict[str, Any]) -> None:
-    context.user_data[KEY_CURRENT_DRAFT] = draft
+def set_draft(user_data: dict[str, Any], draft: dict[str, Any]) -> None:
+    user_data[KEY_CURRENT_DRAFT] = draft
 
 
-def get_cancelled_draft(context: ContextTypes.DEFAULT_TYPE) -> dict[str, Any] | None:
-    return context.user_data.get(KEY_CANCELLED_DRAFT)
+def get_cancelled_draft(user_data: dict[str, Any]) -> dict[str, Any] | None:
+    return user_data.get(KEY_CANCELLED_DRAFT)
 
 
-def has_cancelled_draft(context: ContextTypes.DEFAULT_TYPE) -> bool:
-    return KEY_CANCELLED_DRAFT in context.user_data
+def has_cancelled_draft(user_data: dict[str, Any]) -> bool:
+    return KEY_CANCELLED_DRAFT in user_data
 
 
-def get_recent_context(context: ContextTypes.DEFAULT_TYPE) -> list[dict[str, Any]]:
-    return context.user_data.setdefault(KEY_RECENT_CONTEXT, [])
+def get_recent_context(user_data: dict[str, Any]) -> list[dict[str, Any]]:
+    return user_data.setdefault(KEY_RECENT_CONTEXT, [])
 
 
-def ensure_question_session(context: ContextTypes.DEFAULT_TYPE) -> dict[str, Any]:
-    qsession = context.user_data.get(KEY_QUESTION_SESSION)
+def ensure_question_session(user_data: dict[str, Any]) -> dict[str, Any]:
+    qsession = user_data.get(KEY_QUESTION_SESSION)
     if qsession is None:
         qsession = {
             "questions_asked": 0,
@@ -74,17 +72,17 @@ def ensure_question_session(context: ContextTypes.DEFAULT_TYPE) -> dict[str, Any
             "meaning_check_count": 0,
             "last_question_mode": None,
         }
-        context.user_data[KEY_QUESTION_SESSION] = qsession
+        user_data[KEY_QUESTION_SESSION] = qsession
     return qsession
 
 
 def record_question(
-    context: ContextTypes.DEFAULT_TYPE,
+    user_data: dict[str, Any],
     draft: dict[str, Any],
     question_result: dict[str, Any],
 ) -> dict[str, Any]:
     """질문 1회를 세션에 기록하고 draft.question_mode_used를 갱신."""
-    qsession = ensure_question_session(context)
+    qsession = ensure_question_session(user_data)
     mode = question_result.get("question_mode")
     qsession["questions_asked"] += 1
     if mode:
@@ -97,12 +95,12 @@ def record_question(
 
 
 def append_recent_context(
-    context: ContextTypes.DEFAULT_TYPE,
+    user_data: dict[str, Any],
     *,
     user_texts: list[str],
     draft: dict[str, Any],
 ) -> None:
-    recent = get_recent_context(context)
+    recent = get_recent_context(user_data)
     recent.append(
         {
             "user_texts": list(user_texts),
@@ -115,50 +113,50 @@ def append_recent_context(
 
 
 def cancel_current_draft(
-    context: ContextTypes.DEFAULT_TYPE,
+    user_data: dict[str, Any],
     *,
     reason: str = "",
 ) -> None:
-    draft = context.user_data.pop(KEY_CURRENT_DRAFT, None)
-    session = context.user_data.get(KEY_CURRENT_SESSION)
+    draft = user_data.pop(KEY_CURRENT_DRAFT, None)
+    current_session = user_data.get(KEY_CURRENT_SESSION)
 
     if draft is not None:
-        context.user_data[KEY_CANCELLED_DRAFT] = draft
+        user_data[KEY_CANCELLED_DRAFT] = draft
         if reason:
-            context.user_data[KEY_CANCELLATION_REASON] = reason
-        elif session:
-            user_texts = session.get("user_texts", [])
+            user_data[KEY_CANCELLATION_REASON] = reason
+        elif current_session:
+            user_texts = current_session.get("user_texts", [])
             if user_texts:
-                context.user_data[KEY_CANCELLATION_REASON] = user_texts[-1]
+                user_data[KEY_CANCELLATION_REASON] = user_texts[-1]
 
-        user_texts = session.get("user_texts", []) if session else []
-        append_recent_context(context, user_texts=user_texts, draft=draft)
+        user_texts = current_session.get("user_texts", []) if current_session else []
+        append_recent_context(user_data, user_texts=user_texts, draft=draft)
 
-    context.user_data.pop(KEY_CURRENT_SESSION, None)
-    context.user_data.pop(KEY_FOLLOWUP_ASKED, None)
-    context.user_data.pop(KEY_QUESTION_SESSION, None)
+    user_data.pop(KEY_CURRENT_SESSION, None)
+    user_data.pop(KEY_FOLLOWUP_ASKED, None)
+    user_data.pop(KEY_QUESTION_SESSION, None)
 
 
-def clear_cancelled_draft(context: ContextTypes.DEFAULT_TYPE) -> None:
-    context.user_data.pop(KEY_CANCELLED_DRAFT, None)
-    context.user_data.pop(KEY_CANCELLATION_REASON, None)
-    context.user_data.pop(KEY_PERSISTED_DRAFT_ID, None)
+def clear_cancelled_draft(user_data: dict[str, Any]) -> None:
+    user_data.pop(KEY_CANCELLED_DRAFT, None)
+    user_data.pop(KEY_CANCELLATION_REASON, None)
+    user_data.pop(KEY_PERSISTED_DRAFT_ID, None)
 
 
 def load_cancelled_draft_from_db(
-    context: ContextTypes.DEFAULT_TYPE,
+    user_data: dict[str, Any],
     persisted: dict[str, Any],
 ) -> None:
     """Restore cancelled draft from SQLite row into user_data."""
-    context.user_data[KEY_CANCELLED_DRAFT] = persisted["draft"]
-    context.user_data[KEY_PERSISTED_DRAFT_ID] = persisted["id"]
+    user_data[KEY_CANCELLED_DRAFT] = persisted["draft"]
+    user_data[KEY_PERSISTED_DRAFT_ID] = persisted["id"]
     if persisted.get("cancellation_reason"):
-        context.user_data[KEY_CANCELLATION_REASON] = persisted["cancellation_reason"]
+        user_data[KEY_CANCELLATION_REASON] = persisted["cancellation_reason"]
 
     user_texts = persisted.get("user_texts") or []
     conversation = persisted.get("conversation") or []
     if user_texts or conversation:
-        context.user_data[KEY_CURRENT_SESSION] = {
+        user_data[KEY_CURRENT_SESSION] = {
             "user_texts": list(user_texts),
             "conversation": list(conversation),
         }
@@ -168,17 +166,17 @@ def is_edit_command(text: str) -> bool:
     return text in EDIT_KEYWORDS or text.startswith("수정 ")
 
 
-def reset_recording_session(context: ContextTypes.DEFAULT_TYPE) -> None:
+def reset_recording_session(user_data: dict[str, Any]) -> None:
     for key in (
         KEY_CURRENT_SESSION,
         KEY_CURRENT_DRAFT,
         KEY_FOLLOWUP_ASKED,
         KEY_QUESTION_SESSION,
     ):
-        context.user_data.pop(key, None)
+        user_data.pop(key, None)
 
 
-def reset_all(context: ContextTypes.DEFAULT_TYPE) -> None:
+def reset_all(user_data: dict[str, Any]) -> None:
     for key in (
         KEY_CURRENT_SESSION,
         KEY_CURRENT_DRAFT,
@@ -189,22 +187,22 @@ def reset_all(context: ContextTypes.DEFAULT_TYPE) -> None:
         KEY_QUESTION_SESSION,
         KEY_PERSISTED_DRAFT_ID,
     ):
-        context.user_data.pop(key, None)
+        user_data.pop(key, None)
 
 
-def restore_cancelled_to_current(context: ContextTypes.DEFAULT_TYPE) -> dict[str, Any] | None:
-    draft = context.user_data.pop(KEY_CANCELLED_DRAFT, None)
+def restore_cancelled_to_current(user_data: dict[str, Any]) -> dict[str, Any] | None:
+    draft = user_data.pop(KEY_CANCELLED_DRAFT, None)
     if draft is None:
         return None
-    context.user_data[KEY_CURRENT_DRAFT] = draft
-    ensure_session(context)
+    user_data[KEY_CURRENT_DRAFT] = draft
+    ensure_session(user_data)
     return draft
 
 
-def relates_to_cancellation(text: str, context: ContextTypes.DEFAULT_TYPE) -> bool:
+def relates_to_cancellation(text: str, user_data: dict[str, Any]) -> bool:
     """취소 사유·맥락과 새 입력이 관련 있는지 간단히 판별."""
-    reason = context.user_data.get(KEY_CANCELLATION_REASON, "")
-    if not reason and not has_cancelled_draft(context):
+    reason = user_data.get(KEY_CANCELLATION_REASON, "")
+    if not reason and not has_cancelled_draft(user_data):
         return False
 
     keywords = (

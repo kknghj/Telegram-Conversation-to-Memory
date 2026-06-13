@@ -1,4 +1,4 @@
-"""Admin scenario tests for cancelled draft SQLite persistence."""
+"""Tests for cancelled draft SQLite persistence."""
 
 from __future__ import annotations
 
@@ -77,10 +77,9 @@ class TestScenarioA:
             db_path=temp_db,
         )
 
-        # 서버 재시작: 메모리 세션 비움
-        ctx = _make_context({})
+        user_data = {}
 
-        with patch("conversation_to_memory.bot.handlers.db.DEFAULT_DB_PATH", temp_db):
+        with patch("conversation_to_memory.bot.chat_service.db.DEFAULT_DB_PATH", temp_db):
             persisted = db.get_latest_cancelled_draft(user_id, db_path=temp_db)
 
         assert persisted is not None
@@ -88,11 +87,11 @@ class TestScenarioA:
         assert persisted["draft"]["event_summary"] == SAMPLE_DRAFT["event_summary"]
         assert persisted["user_texts"] == SAMPLE_TEXTS
 
-        session.load_cancelled_draft_from_db(ctx, persisted)
-        restored = session.restore_cancelled_to_current(ctx)
+        session.load_cancelled_draft_from_db(user_data, persisted)
+        restored = session.restore_cancelled_to_current(user_data)
 
         assert restored == SAMPLE_DRAFT
-        assert session.get_session(ctx)["user_texts"] == SAMPLE_TEXTS
+        assert session.get_session(user_data)["user_texts"] == SAMPLE_TEXTS
 
     def test_edit_after_restart_loads_draft(self, temp_db):
         user_id = "user-a"
@@ -108,7 +107,7 @@ class TestScenarioA:
         update = _make_update(user_id=42, text="수정")
         ctx = _make_context({})
 
-        with patch("conversation_to_memory.bot.handlers.db.DEFAULT_DB_PATH", temp_db):
+        with patch("conversation_to_memory.bot.chat_service.db.DEFAULT_DB_PATH", temp_db):
             with patch(
                 "conversation_to_memory.bot.handlers._user_id",
                 return_value=user_id,
@@ -116,7 +115,7 @@ class TestScenarioA:
                 result = asyncio.run(edit_cancelled_draft(update, ctx))
 
         assert result == states.REVIEW
-        assert session.get_draft(ctx) == SAMPLE_DRAFT
+        assert session.get_draft(ctx.user_data) == SAMPLE_DRAFT
         update.message.reply_text.assert_awaited()
         reply = update.message.reply_text.await_args[0][0]
         assert "취소했던 초안을 불러왔습니다" in reply
@@ -149,7 +148,7 @@ class TestScenarioB:
         update = _make_update(user_id=99, text="기록 시작")
         ctx = _make_context({})
 
-        with patch("conversation_to_memory.bot.handlers.db.DEFAULT_DB_PATH", temp_db):
+        with patch("conversation_to_memory.bot.chat_service.db.DEFAULT_DB_PATH", temp_db):
             with patch(
                 "conversation_to_memory.bot.handlers._user_id",
                 return_value=user_id,
