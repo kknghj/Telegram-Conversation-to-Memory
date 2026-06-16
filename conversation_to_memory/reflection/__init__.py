@@ -12,6 +12,20 @@ from conversation_to_memory.reflection.evaluation_log import (
     EvaluationLogEntry,
     EvaluationLogStore,
 )
+from conversation_to_memory.reflection.evaluation_models import (
+    Accuracy,
+    Action,
+    CardEvaluation,
+    CardValue,
+    EvidenceQuality,
+    FailureType,
+    derive_action,
+)
+from conversation_to_memory.reflection.evaluation_storage import (
+    aggregate_evaluation_stats,
+    append_card_evaluation,
+    load_card_evaluations,
+)
 from conversation_to_memory.reflection.evidence import (
     DERIVED_SOURCE_FIELDS,
     PRIMARY_SOURCE_FIELDS,
@@ -30,11 +44,21 @@ from conversation_to_memory.reflection.schema import (
 )
 
 __all__ = [
+    "Accuracy",
+    "Action",
+    "CardEvaluation",
+    "CardValue",
     "CardValidationError",
     "CURRENT_SCHEMA_VERSION",
     "DERIVED_SOURCE_FIELDS",
+    "EvidenceQuality",
     "EvaluationLogEntry",
     "EvaluationLogStore",
+    "FailureType",
+    "aggregate_evaluation_stats",
+    "append_card_evaluation",
+    "derive_action",
+    "load_card_evaluations",
     "EvidenceItem",
     "FAILURE_TYPES",
     "PRIMARY_SOURCE_FIELDS",
