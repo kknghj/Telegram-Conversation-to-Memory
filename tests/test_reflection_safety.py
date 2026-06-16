@@ -225,6 +225,7 @@ class TestLegacySchemaWarning:
         assert "legacy_schema" in warning
 
     def test_legacy_lowers_confidence_on_card(self):
+        """legacy 메모는 evidence 인용 불가. source_memory_ids에는 포함되어 경고·신뢰도에 반영."""
         card = validate_reflection_card(
             ReflectionCard(
                 card_id="c4",
@@ -233,7 +234,6 @@ class TestLegacySchemaWarning:
                 observation="legacy 메모 기반",
                 source_memory_ids=["m1", "m2"],
                 evidence=[
-                    EvidenceItem("primary", "conversation", "m1", "q1"),
                     EvidenceItem("primary", "conversation", "m2", "q2"),
                 ],
             ),
@@ -253,7 +253,7 @@ class TestMigration:
                 json.dump(_legacy_memory(), f, ensure_ascii=False, indent=2)
 
             result = migrate_memories(mem_dir)
-            assert result["updated"] == 1
+            assert result["migrated_count"] == 1
             backup_dir = Path(result["backup_dir"])
             assert (backup_dir / legacy_path.name).exists()
 

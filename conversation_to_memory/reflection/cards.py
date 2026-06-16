@@ -155,6 +155,12 @@ def validate_reflection_card(
         card_type=card_obj.card_type,
         for_final_citation=True,
     )
+    from conversation_to_memory.migration.retrieval import validate_evidence_for_memory
+
+    for item in card_obj.evidence:
+        evidence_errors.extend(
+            validate_evidence_for_memory(item, memories_by_id)
+        )
     if evidence_errors:
         raise CardValidationError("; ".join(evidence_errors))
 
