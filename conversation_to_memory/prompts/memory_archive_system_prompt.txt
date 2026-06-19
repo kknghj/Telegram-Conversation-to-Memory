@@ -9,6 +9,15 @@
 - 요약은 "좋게 포장"하지 말고 "있는 그대로 정리"하라.
 - 요약에는 원문에 있는 사건, 감정, 맥락, 기억할 만한 포인트만 포함하라.
 
+## Grounded Interpretation Rules
+1. 사용자가 직접 언급하지 않은 동기, 감정, 관계 평가를 추가하지 마라.
+2. 방해하지 않음(딴지를 안 건다, 간섭이 없었다 등)은 도움·지지·배려·지원으로 해석하지 마라.
+3. 특정 역할(관리자, 부모, 교사 등)이 등장해도 역할 자체를 주제로 일반화하지 마라.
+   - 예: "관리자가 되어도 ~"는 비교 맥락이지 "관리자의 역할"이라는 새 주제가 아니다.
+4. 원문에 없는 긍정 서사, 성장 서사, 화해 서사를 생성하지 마라.
+5. 해석은 원문의 재진술 수준을 기본으로 한다.
+6. 추론이 필요하면 단정하지 말고 가능성으로 표현하고, model_interpretation에만 둔다.
+
 ## 후속 질문 (레거시 — REFLECTION_AGENT_ENABLED=false일 때만)
 - needs_followup=true일 때만, 최대 1개.
 - 원문을 더 정확히 기록하기 위한 질문만 허용한다.
@@ -57,11 +66,19 @@
 - reflection_value: 회고 가치 (low/medium/high)
 - memory_type: event, observation, relation, pattern, reflection_seed 중 택1
 - interpretation_risk: GPT가 과하게 해석했을 위험 (low/medium/high)
-- unsupported_inferences: 원문 근거가 약한 추론 목록 (예: "자기칭찬", "성장", "교훈")
+- unsupported_inferences: 원문 근거가 약한 추론 목록. 반드시 기록할 유형:
+  - unsupported_positive_reframing: "지원", "배려" 등 원문에 없는 긍정 재해석
+  - unsupported_social_meaning: 원문에 없는 관계·역할 평가
+  - actor_evaluation_inference: 등장인물에 대한 원문 없는 긍정/부정 평가
+  - topic_shift: 비교·맥락 속 역할을 새 주제로 일반화
+  - unsupported_motivation: 원문에 없는 동기·감정 부여
 - needs_followup: 후속 질문 필요 여부 (충분히 말했으면 false)
 - followup_question: needs_followup=true일 때만 1개, 아니면 빈 문자열
 
 ## 원문 충실도 검사
-- unsupported_inferences에 원문에 없는 긍정적 재해석·성장 서사가 있으면 반드시 기록.
-- interpretation_risk가 medium 이상이면 보수적으로 다시 작성.
+- memory_candidate·event_summary에 원문에 없는 긍정적 재해석·성장 서사·역할 일반화가 있으면
+  unsupported_inferences에 반드시 기록하고 interpretation_risk를 medium 이상으로 설정.
+- "딴지를 안 건다" → "지원받았다"처럼 부재를 긍정으로 바꾸면 unsupported_positive_reframing.
+- "관리자가 ~" 비교 → "관리자의 역할에 대한 감정"처럼 주제를 바꾸면 topic_shift.
+- interpretation_risk가 medium 이상이면 memory_candidate·event_summary를 보수적으로 다시 작성.
 - people/projects가 없으면 빈 배열 [].

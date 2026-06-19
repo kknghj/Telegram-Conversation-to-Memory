@@ -24,6 +24,19 @@ GROWTH_NARRATIVE_PHRASES = (
     "소중한 깨달음",
 )
 
+POSITIVE_REFRAMING_TERMS = (
+    "지원",
+    "배려",
+    "격려",
+    "응원",
+    "도움",
+    "도와",
+)
+
+ROLE_GENERALIZATION_RE = re.compile(r"관리자.{0,12}역할")
+INFERRED_EMOTION_RE = re.compile(r"복잡한\s*감정")
+ACTOR_POSITIVE_RE = re.compile(r"(팀장|상사|부모|교사|관리자).{0,12}(지원|배려|도움|격려)")
+
 
 def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip())
@@ -33,18 +46,52 @@ def term_in_source(term: str, source_text: str) -> bool:
     return term in source_text
 
 
-def detect_unsupported_inferences(draft: dict, source_text: str) -> list[str]:
-    """원문에 없는 긍정적 재해석·성장 서사를 탐지."""
-    source = _normalize_text(source_text)
-    found: list[str] = []
-
+def _combined_output_text(draft: dict) -> str:
     searchable_fields = [
+        draft.get("topic", ""),
         draft.get("event_summary", ""),
         draft.get("memory_candidate", ""),
         draft.get("model_interpretation", ""),
         " ".join(draft.get("user_emotions", [])),
+        " ".join(draft.get("emerging_themes", [])),
     ]
-    combined_output = " ".join(str(v) for v in searchable_fields)
+    return " ".join(str(v) for v in searchable_fields)
+
+
+def _detect_positive_reframing(combined_output: str, source: str) -> list[str]:
+    found: list[str] = []
+    for term in POSITIVE_REFRAMING_TERMS:
+        if term in combined_output and term not in source:
+            label = f"unsupported_positive_reframing: '{term}' (원문에 없음)"
+            if label not in found:
+                found.append(label)
+    return found
+
+
+def _detect_role_generalization(combined_output: str, source: str) -> list[str]:
+    found: list[str] = []
+    if ROLE_GENERALIZATION_RE.search(combined_output) and "역할" not in source:
+        found.append("topic_shift: 관리자의 역할 일반화")
+    if INFERRED_EMOTION_RE.search(combined_output) and "복잡한" not in source:
+        found.append("unsupported_motivation: 복잡한 감정 (원문에 없음)")
+    return found
+
+
+def _detect_actor_evaluation(combined_output: str, source: str) -> list[str]:
+    found: list[str] = []
+    match = ACTOR_POSITIVE_RE.search(combined_output)
+    if match:
+        term = match.group(2)
+        if term not in source:
+            found.append(f"actor_evaluation_inference: '{match.group(0)}' (원문에 없음)")
+    return found
+
+
+def detect_unsupported_inferences(draft: dict, source_text: str) -> list[str]:
+    """원문에 없는 긍정적 재해석·성장 서사·역할 일반화를 탐지."""
+    source = _normalize_text(source_text)
+    found: list[str] = []
+    combined_output = _combined_output_text(draft)
 
     for phrase in GROWTH_NARRATIVE_PHRASES:
         if phrase in combined_output and phrase not in source:
@@ -62,6 +109,15 @@ def detect_unsupported_inferences(draft: dict, source_text: str) -> list[str]:
             }.get(term, term)
             if label not in found:
                 found.append(label)
+
+    for detector in (
+        _detect_positive_reframing,
+        _detect_role_generalization,
+        _detect_actor_evaluation,
+    ):
+        for item in detector(combined_output, source):
+            if item not in found:
+                found.append(item)
 
     existing = draft.get("unsupported_inferences", [])
     for item in existing:

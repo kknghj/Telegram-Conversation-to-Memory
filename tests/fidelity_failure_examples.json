@@ -1,0 +1,18 @@
+[
+  {
+    "id": "vibecoding_manager_role_shift",
+    "user_text": "바이브코딩이 재미있는 이유는 AI에게 사람 눈치 안 보고 마음껏 시킬 수 있어서다. 실제 관리자가 되어도 이런 경험은 누릴 수 없다.",
+    "incorrect_interpretation": "관리자의 역할에 대한 복잡한 감정",
+    "failure_type": "topic_shift",
+    "correct_interpretation": "AI에게 인간관계 비용 없이 마음껏 지시할 수 있어 바이브코딩이 재미있다. 실제 관리자가 되어도 같은 경험은 어렵다.",
+    "principle": "비교 맥락의 역할(관리자)을 주제로 일반화하지 말고, 사용자가 말한 동기(AI·눈치·지시)만 기록한다."
+  },
+  {
+    "id": "team_lead_non_interference",
+    "user_text": "팀장이 딴지를 안 거니까 생각외로 잘 풀리더라.",
+    "incorrect_interpretation": "팀장의 지원 덕분에 일이 잘 풀렸다.",
+    "failure_type": "unsupported_positive_reframing",
+    "correct_interpretation": "팀장이 딴지를 걸지 않아서 일이 생각보다 잘 풀렸다.",
+    "principle": "방해하지 않음을 지원·배려·도움으로 재해석하지 말고, 원문의 '딴지를 안 건다'를 그대로 기록한다."
+  }
+]
