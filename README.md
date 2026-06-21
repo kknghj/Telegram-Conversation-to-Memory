@@ -71,6 +71,19 @@ python main.py
 
 Telegram에서 `/start` 또는 `기록 시작`을 보냅니다.
 
+## Transcript Replay
+
+메모장에 모아 둔 `.txt` 기록이나 `.json` 대화 파일을 기존 dev chat 흐름으로 replay할 수 있습니다. 기본값은 dry-run이라 final memory 저장소를 변경하지 않습니다.
+
+```powershell
+python -m app.dev_chat --replay data/replay/notes.txt --dry-run
+python -m app.dev_chat --replay data/replay/notes.txt --save-draft
+python -m app.dev_chat --replay data/replay/notes.txt --save-final
+python -m app.dev_chat --replay data/replay/conversation.json --dry-run
+```
+
+자세한 입력 형식과 안전 규칙은 [Transcript Replay Mode](docs/transcript_replay_mode.md)를 참고하세요.
+
 ## 테스트
 
 ```powershell
