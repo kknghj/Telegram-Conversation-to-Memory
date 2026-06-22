@@ -12,6 +12,7 @@ KEY_RECENT_CONTEXT = "recent_context"
 KEY_FOLLOWUP_ASKED = "followup_asked"
 KEY_QUESTION_SESSION = "question_session"
 KEY_PERSISTED_DRAFT_ID = "persisted_draft_id"
+KEY_PENDING_FAILURE = "pending_failure_recording"
 
 CANCEL_MESSAGE = (
     "저장을 취소했습니다. 방금 요약은 저장하지 않았습니다.\n"
@@ -172,6 +173,7 @@ def reset_recording_session(user_data: dict[str, Any]) -> None:
         KEY_CURRENT_DRAFT,
         KEY_FOLLOWUP_ASKED,
         KEY_QUESTION_SESSION,
+        KEY_PENDING_FAILURE,
     ):
         user_data.pop(key, None)
 
@@ -186,6 +188,7 @@ def reset_all(user_data: dict[str, Any]) -> None:
         KEY_FOLLOWUP_ASKED,
         KEY_QUESTION_SESSION,
         KEY_PERSISTED_DRAFT_ID,
+        KEY_PENDING_FAILURE,
     ):
         user_data.pop(key, None)
 
