@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -15,10 +16,8 @@ from conversation_to_memory.bot import chat_service, session, states
 from conversation_to_memory.memory.fidelity import validate_draft
 from conversation_to_memory.storage.local_json import DEFAULT_MEMORIES_DIR
 
-ReplayMode = Literal["dry-run", "save-draft", "save-final"]
-FollowupMode = Literal["none", "generate-only"]
-
-DEFAULT_DRAFT_OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "replay_outputs" / "drafts"
+ReplayMode = Literal["dry-run", "interactive-review", "save-final"]
+InteractiveReviewChoice = Literal["save", "skip", "exit"]
 
 
 @dataclass
@@ -29,6 +28,15 @@ class ReplayBlock:
     source_text: str
     conversation: list[dict[str, str]]
     session_id: str | None = None
+    recorded_at: datetime | None = None
+
+
+_BLOCK_DATETIME_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # YYYY MM DD HHmm (spaces), e.g. "2026 06 23 0754"
+    re.compile(r"^(?P<y>20\d{2})\s+(?P<m>\d{1,2})\s+(?P<d>\d{1,2})\s+(?P<t>\d{3,4})\s*$"),
+    # YYYY-MM-DD with optional HHmm, e.g. "2026-06-21" or "2026-06-21 0754"
+    re.compile(r"^(?P<y>20\d{2})-(?P<m>\d{1,2})-(?P<d>\d{1,2})(?:\s+(?P<t>\d{3,4}))?\s*$"),
+)
 
 
 @dataclass
@@ -51,12 +59,44 @@ class ReplayRunResult:
     parsed_blocks: int
     saved: bool
     results: list[ReplayBlockResult]
+    aborted: bool = False
 
 
 def parse_txt_blocks(text: str) -> list[str]:
     """Split bulk memo text on --- or === lines and drop empty blocks."""
     chunks = re.split(r"(?m)^\s*(?:---|===)\s*$", text)
     return [chunk.strip() for chunk in chunks if chunk.strip()]
+
+
+def parse_block_header_datetime(text: str) -> tuple[datetime | None, str]:
+    """Parse an optional memo timestamp from the first line and return the body."""
+    stripped = text.strip()
+    if not stripped:
+        return None, stripped
+
+    first_line, separator, rest = stripped.partition("\n")
+    first_line = first_line.strip()
+    for pattern in _BLOCK_DATETIME_PATTERNS:
+        match = pattern.match(first_line)
+        if not match:
+            continue
+        year = int(match.group("y"))
+        month = int(match.group("m"))
+        day = int(match.group("d"))
+        hour, minute = 0, 0
+        time_part = match.group("t")
+        if time_part:
+            padded = time_part.zfill(4)
+            hour = int(padded[:2])
+            minute = int(padded[2:])
+        try:
+            recorded_at = datetime(year, month, day, hour, minute)
+        except ValueError:
+            continue
+        body = rest.strip() if separator else ""
+        return recorded_at, body
+
+    return None, stripped
 
 
 def parse_json_blocks(data: Any) -> list[ReplayBlock]:
@@ -88,14 +128,19 @@ def parse_replay_file(path: Path | str) -> list[ReplayBlock]:
     suffix = replay_path.suffix.lower()
     if suffix == ".txt":
         text = replay_path.read_text(encoding="utf-8")
-        return [
-            ReplayBlock(
-                index=index,
-                source_text=block,
-                conversation=[{"role": "user", "content": block}],
+        blocks: list[ReplayBlock] = []
+        for index, block in enumerate(parse_txt_blocks(text), 1):
+            recorded_at, body = parse_block_header_datetime(block)
+            content = body if body else block
+            blocks.append(
+                ReplayBlock(
+                    index=index,
+                    source_text=block,
+                    conversation=[{"role": "user", "content": content}],
+                    recorded_at=recorded_at,
+                )
             )
-            for index, block in enumerate(parse_txt_blocks(text), 1)
-        ]
+        return blocks
     if suffix == ".json":
         data = json.loads(replay_path.read_text(encoding="utf-8"))
         return parse_json_blocks(data)
@@ -114,32 +159,93 @@ def compute_replay_hash(source_file: Path | str, block: ReplayBlock) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def format_memory_preview(draft: dict[str, Any]) -> str:
+    """Return structured JSON preview for interactive review."""
+    preview = {
+        "topic": draft.get("topic"),
+        "event_summary": draft.get("event_summary"),
+        "user_emotions": draft.get("user_emotions"),
+        "emotion_evidence": draft.get("emotion_evidence"),
+        "people": draft.get("people"),
+        "projects": draft.get("projects"),
+        "tags": draft.get("tags"),
+        "memory_candidate": draft.get("memory_candidate"),
+        "key_phrases": draft.get("key_phrases"),
+        "emerging_themes": draft.get("emerging_themes"),
+        "open_questions": draft.get("open_questions"),
+        "reflection_value": draft.get("reflection_value"),
+        "memory_type": draft.get("memory_type"),
+        "interpretation_risk": draft.get("interpretation_risk"),
+        "unsupported_inferences": draft.get("unsupported_inferences"),
+    }
+    return json.dumps(preview, ensure_ascii=False, indent=2)
+
+
+def format_interactive_review_screen(block: ReplayBlock, draft: dict[str, Any]) -> str:
+    """Format one block's interactive review prompt."""
+    divider = "=" * 33
+    section = "-" * 33
+    return (
+        f"{divider}\n\n"
+        "원문\n\n"
+        f"{block.source_text}\n\n"
+        f"{section}\n\n"
+        "요약\n\n"
+        f"{draft.get('event_summary', '')}\n\n"
+        f"{section}\n\n"
+        "Memory Preview\n\n"
+        f"{format_memory_preview(draft)}\n\n"
+        f"{section}\n\n"
+        "저장하시겠습니까?\n\n"
+        "[y] 저장\n"
+        "[n] 건너뛰기\n"
+        "[e] 종료\n\n"
+        ">"
+    )
+
+
+def prompt_review_choice(input_fn: Callable[[], str]) -> InteractiveReviewChoice:
+    """Read and validate an interactive review choice."""
+    while True:
+        raw = input_fn().strip().lower()
+        if raw in ("y", "yes"):
+            return "save"
+        if raw in ("n", "no"):
+            return "skip"
+        if raw in ("e", "exit"):
+            return "exit"
+
+
 def run_replay(
     source_file: Path | str,
     *,
     mode: ReplayMode = "dry-run",
     user_id: str = "dev-user",
     force: bool = False,
-    followup_mode: FollowupMode = "none",
-    draft_output_dir: Path | str = DEFAULT_DRAFT_OUTPUT_DIR,
     memories_dir: Path | str = DEFAULT_MEMORIES_DIR,
+    input_fn: Callable[[], str] | None = None,
+    output_fn: Callable[[str], None] | None = None,
 ) -> ReplayRunResult:
     """Replay a file through dev_chat's session, draft, and save flow."""
-    if mode not in ("dry-run", "save-draft", "save-final"):
+    if mode not in ("dry-run", "interactive-review", "save-final"):
         raise ValueError(f"Unsupported replay mode: {mode}")
-    if followup_mode not in ("none", "generate-only"):
-        raise ValueError(f"Unsupported followup mode: {followup_mode}")
 
     db.init_db()
     source_path = Path(source_file)
     blocks = parse_replay_file(source_path)
     results: list[ReplayBlockResult] = []
+    aborted = False
 
     for block in blocks:
+        if aborted:
+            break
+
         replay_hash = compute_replay_hash(source_path, block)
         result = ReplayBlockResult(index=block.index, replay_hash=replay_hash)
 
-        if mode == "save-final" and not force and replay_hash_exists(replay_hash, memories_dir):
+        if mode in ("save-final", "interactive-review") and not force and replay_hash_exists(
+            replay_hash, memories_dir
+        ):
             result.skipped = True
             result.messages.append("Duplicate replay_hash found; skipped.")
             results.append(result)
@@ -167,16 +273,6 @@ def run_replay(
             state = summary.state
 
             if state == states.FOLLOWUP:
-                draft = session.get_draft(user_data) or {}
-                if followup_mode == "generate-only":
-                    _merge_replay_metadata(
-                        draft,
-                        source_path,
-                        block,
-                        replay_hash,
-                        include_suggested_followup=True,
-                    )
-                    result.messages.extend(summary.messages)
                 state = states.REVIEW
 
             draft = session.get_draft(user_data)
@@ -188,15 +284,30 @@ def run_replay(
                 source_path,
                 block,
                 replay_hash,
-                include_suggested_followup=followup_mode == "generate-only",
             )
             session.set_draft(user_data, draft)
             result.draft = draft
             result.validation = _validation_summary(draft)
 
-            if mode == "save-draft":
-                result.output_path = save_replay_draft(draft, block, draft_output_dir)
-                result.saved = True
+            if mode == "interactive-review":
+                _emit(format_interactive_review_screen(block, draft), output_fn)
+                reader = input_fn or input
+                while True:
+                    choice = prompt_review_choice(reader)
+                    if choice == "save":
+                        save_result = chat_service.handle_review(
+                            user_id, user_data, chat_service.SAVE_KEYWORD
+                        )
+                        result.messages.extend(save_result.messages)
+                        result.saved = save_result.state == chat_service.IDLE
+                        result.output_path = _extract_saved_path(save_result.messages)
+                        break
+                    if choice == "skip":
+                        result.skipped = True
+                        break
+                    aborted = True
+                    result.skipped = True
+                    break
             elif mode == "save-final":
                 save_result = chat_service.handle_review(user_id, user_data, chat_service.SAVE_KEYWORD)
                 result.messages.extend(save_result.messages)
@@ -204,6 +315,8 @@ def run_replay(
                 result.output_path = _extract_saved_path(save_result.messages)
 
             results.append(result)
+            if aborted:
+                break
         except Exception as exc:
             result.error = str(exc)
             results.append(result)
@@ -214,27 +327,8 @@ def run_replay(
         parsed_blocks=len(blocks),
         saved=mode != "dry-run",
         results=results,
+        aborted=aborted,
     )
-
-
-def save_replay_draft(
-    draft: dict[str, Any],
-    block: ReplayBlock,
-    output_dir: Path | str = DEFAULT_DRAFT_OUTPUT_DIR,
-) -> str:
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-    date_prefix = _date_prefix(block.source_text)
-    filename = f"{date_prefix}_{block.index:03d}_draft.json"
-    filepath = output_path / filename
-    payload = {
-        "created_at": datetime.now().isoformat(),
-        "status": "draft",
-        **draft,
-        "approved": False,
-    }
-    filepath.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    return str(filepath)
 
 
 def replay_hash_exists(replay_hash: str, memories_dir: Path | str = DEFAULT_MEMORIES_DIR) -> bool:
@@ -257,8 +351,16 @@ def format_run_result(run: ReplayRunResult) -> str:
         f"input_file: {run.input_file}",
         f"mode: {run.mode}",
         f"parsed_blocks: {run.parsed_blocks}",
+        f"processed_blocks: {len(run.results)}",
         f"actual_save_requested: {str(run.saved).lower()}",
     ]
+    if run.mode == "interactive-review":
+        lines.append(f"aborted: {str(run.aborted).lower()}")
+        saved_count = sum(1 for result in run.results if result.saved)
+        skipped_count = sum(1 for result in run.results if result.skipped and not result.saved)
+        lines.append(f"saved_blocks: {saved_count}")
+        lines.append(f"skipped_blocks: {skipped_count}")
+
     for result in run.results:
         lines.append("")
         lines.append(f"[block {result.index}]")
@@ -272,10 +374,18 @@ def format_run_result(run: ReplayRunResult) -> str:
         if result.draft:
             lines.append(f"draft_summary: {result.draft.get('event_summary', '')}")
             lines.append(f"validation: {json.dumps(result.validation, ensure_ascii=False)}")
-            preview = json.dumps(result.draft, ensure_ascii=False, indent=2)
-            lines.append("json_preview:")
-            lines.append(preview)
+            if run.mode == "dry-run":
+                preview = json.dumps(result.draft, ensure_ascii=False, indent=2)
+                lines.append("json_preview:")
+                lines.append(preview)
     return "\n".join(lines)
+
+
+def _emit(text: str, output_fn: Callable[[str], None] | None) -> None:
+    if output_fn is not None:
+        output_fn(text)
+    else:
+        print(text, flush=True)
 
 
 def _normalize_messages(raw_messages: Any) -> list[dict[str, str]]:
@@ -303,8 +413,6 @@ def _merge_replay_metadata(
     source_file: Path,
     block: ReplayBlock,
     replay_hash: str,
-    *,
-    include_suggested_followup: bool = False,
 ) -> None:
     metadata = dict(draft.get("metadata") or {})
     metadata.update(
@@ -318,8 +426,9 @@ def _merge_replay_metadata(
     )
     if block.session_id:
         metadata["session_id"] = block.session_id
-    if include_suggested_followup and draft.get("followup_question"):
-        metadata["suggested_followup_questions"] = [draft["followup_question"]]
+    if block.recorded_at:
+        metadata["recorded_at"] = block.recorded_at.isoformat()
+        draft["timestamp"] = block.recorded_at.isoformat()
     draft["metadata"] = metadata
     draft["conversation"] = list(block.conversation)
     validated = validate_draft(draft, block.source_text)
@@ -332,11 +441,6 @@ def _validation_summary(draft: dict[str, Any]) -> dict[str, Any]:
         "unsupported_inferences": draft.get("unsupported_inferences", []),
         "valid": not draft.get("unsupported_inferences"),
     }
-
-
-def _date_prefix(source_text: str) -> str:
-    match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", source_text)
-    return match.group(1) if match else datetime.now().strftime("%Y-%m-%d")
 
 
 def _extract_saved_path(messages: list[str]) -> str | None:

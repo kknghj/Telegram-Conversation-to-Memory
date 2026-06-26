@@ -28,7 +28,7 @@ class LocalJsonStorage(MemoryStorage):
         self.directory.mkdir(parents=True, exist_ok=True)
 
     def save(self, memory: dict) -> str:
-        timestamp = datetime.now()
+        timestamp = _resolve_save_timestamp(memory)
         filename = timestamp.strftime("%Y-%m-%d_%H%M%S") + ".json"
         filepath = self.directory / filename
 
@@ -43,3 +43,26 @@ class LocalJsonStorage(MemoryStorage):
             json.dump(payload, f, ensure_ascii=False, indent=2)
 
         return str(filepath)
+
+
+def _resolve_save_timestamp(memory: dict) -> datetime:
+    for candidate in (
+        memory.get("timestamp"),
+        (memory.get("metadata") or {}).get("recorded_at"),
+    ):
+        parsed = _coerce_datetime(candidate)
+        if parsed is not None:
+            return parsed
+    return datetime.now()
+
+
+def _coerce_datetime(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str) and value.strip():
+        normalized = value.strip().replace("Z", "+00:00")
+        try:
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+    return None

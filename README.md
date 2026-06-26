@@ -77,7 +77,7 @@ Telegram에서 `/start` 또는 `기록 시작`을 보냅니다.
 
 ```powershell
 python -m app.dev_chat --replay data/replay/notes.txt --dry-run
-python -m app.dev_chat --replay data/replay/notes.txt --save-draft
+python -m app.dev_chat --replay data/replay/notes.txt --interactive-review
 python -m app.dev_chat --replay data/replay/notes.txt --save-final
 python -m app.dev_chat --replay data/replay/conversation.json --dry-run
 ```

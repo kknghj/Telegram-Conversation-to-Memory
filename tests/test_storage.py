@@ -34,3 +34,30 @@ def test_save_creates_json_file():
         assert saved["approved"] is True
         assert saved["schema_version"] == 2
         assert "timestamp" in saved
+
+
+def test_save_uses_provided_timestamp():
+    with tempfile.TemporaryDirectory() as tmp:
+        storage = LocalJsonStorage(directory=Path(tmp))
+        memory = {
+            "timestamp": "2026-06-23T07:54:00",
+            "topic": "테스트",
+            "event_summary": "요약",
+            "user_emotions": ["기쁨"],
+            "emotion_evidence": ["좋았다"],
+            "people": [],
+            "projects": [],
+            "tags": ["test"],
+            "conversation": [{"role": "user", "content": "hello"}],
+            "memory_candidate": "후보",
+            "interpretation_risk": "low",
+            "unsupported_inferences": [],
+            "approved": True,
+        }
+        filepath = storage.save(memory)
+
+        assert Path(filepath).name == "2026-06-23_075400.json"
+        with open(filepath, encoding="utf-8") as f:
+            saved = json.load(f)
+
+        assert saved["timestamp"] == "2026-06-23T07:54:00"
