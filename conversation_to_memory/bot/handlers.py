@@ -1,13 +1,48 @@
 """Telegram bot conversation handlers — thin adapters over chat_service."""
 
+import asyncio
 import logging
 
-from telegram import Update
+from telegram import Message, Update
+from telegram.error import NetworkError, TimedOut
 from telegram.ext import ContextTypes, ConversationHandler
 
 from conversation_to_memory.bot import chat_service, states
 
 logger = logging.getLogger(__name__)
+
+_SEND_MAX_RETRIES = 3
+_SEND_RETRY_BACKOFF_SECONDS = 2.0
+
+
+async def _reply_text_with_retry(
+    message: Message,
+    text: str,
+    *,
+    parse_mode: str | None = None,
+) -> None:
+    kwargs = {"parse_mode": parse_mode} if parse_mode else {}
+
+    for attempt in range(1, _SEND_MAX_RETRIES + 1):
+        try:
+            await message.reply_text(text, **kwargs)
+            return
+        except (TimedOut, NetworkError) as exc:
+            if attempt >= _SEND_MAX_RETRIES:
+                logger.error(
+                    "Telegram reply failed after %d attempts: %s",
+                    _SEND_MAX_RETRIES,
+                    exc,
+                )
+                raise
+            wait = _SEND_RETRY_BACKOFF_SECONDS * attempt
+            logger.warning(
+                "Telegram reply timed out (attempt %d/%d), retrying in %.1fs",
+                attempt,
+                _SEND_MAX_RETRIES,
+                wait,
+            )
+            await asyncio.sleep(wait)
 
 
 def _user_id(update: Update) -> str:
@@ -20,10 +55,11 @@ async def _reply_result(
     result: chat_service.ChatTurnResult,
 ) -> int:
     for message in result.messages:
-        if result.parse_mode:
-            await update.message.reply_text(message, parse_mode=result.parse_mode)
-        else:
-            await update.message.reply_text(message)
+        await _reply_text_with_retry(
+            update.message,
+            message,
+            parse_mode=result.parse_mode,
+        )
     return result.state if result.state != chat_service.IDLE else ConversationHandler.END
 
 
@@ -77,7 +113,7 @@ async def route_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     text = update.message.text.strip()
     result = chat_service.handle_route_message(_user_id(update), context.user_data, text)
     for message in result.messages:
-        await update.message.reply_text(message)
+        await _reply_text_with_retry(update.message, message)
 
 
 async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

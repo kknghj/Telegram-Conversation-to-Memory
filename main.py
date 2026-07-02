@@ -43,6 +43,7 @@ def main() -> None:
     from telegram.ext import (
         ApplicationBuilder,
         CommandHandler,
+        ContextTypes,
         ConversationHandler,
         MessageHandler,
         filters,
@@ -90,7 +91,21 @@ def main() -> None:
         name="memory_session",
     )
 
-    app = ApplicationBuilder().token(token).build()
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        logger.error("Update 처리 중 오류", exc_info=context.error)
+
+    app = (
+        ApplicationBuilder()
+        .token(token)
+        .connect_timeout(30.0)
+        .read_timeout(30.0)
+        .write_timeout(30.0)
+        .pool_timeout(10.0)
+        .get_updates_connect_timeout(30.0)
+        .get_updates_read_timeout(30.0)
+        .build()
+    )
+    app.add_error_handler(error_handler)
     app.add_handler(conv_handler)
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.route_message)
