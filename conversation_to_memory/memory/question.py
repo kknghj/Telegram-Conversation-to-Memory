@@ -13,6 +13,10 @@ from conversation_to_memory.memory.fidelity import (
     FORBIDDEN_INFERENCE_TERMS,
     GROWTH_NARRATIVE_PHRASES,
 )
+from conversation_to_memory.failure_recorder import (
+    detect_inappropriate_positive_reframe_risk,
+    user_has_negative_emotion_context,
+)
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
@@ -183,15 +187,61 @@ def normalize_question_result(data: dict) -> dict:
     return result
 
 
+def _combined_user_text(
+    *,
+    user_texts: list[str] | None = None,
+    latest_user_text: str = "",
+    conversation: list[dict] | None = None,
+) -> str:
+    parts: list[str] = []
+    if user_texts:
+        parts.extend(user_texts)
+    if conversation:
+        parts.extend(
+            turn["content"] for turn in conversation if turn.get("role") == "user"
+        )
+    if latest_user_text:
+        parts.append(latest_user_text)
+    return " ".join(parts)
+
+
+def should_skip_followup_after_summary(
+    *,
+    user_texts: list[str] | None = None,
+    latest_user_text: str = "",
+    conversation: list[dict] | None = None,
+) -> bool:
+    """요약 요청 + 부정 감정이 충분히 드러난 경우 추가 질문 생략."""
+    if latest_user_text.strip() != "요약":
+        return False
+    prior_text = _combined_user_text(
+        user_texts=user_texts,
+        conversation=conversation,
+    )
+    return user_has_negative_emotion_context(prior_text)
+
+
 def validate_question(
     result: dict,
     *,
     draft: dict,
     question_session: dict,
     latest_user_text: str = "",
+    user_texts: list[str] | None = None,
+    conversation: list[dict] | None = None,
 ) -> dict:
     """질문 품질 검증 및 meaning_check 제한 적용."""
     validated = normalize_question_result(result)
+
+    if should_skip_followup_after_summary(
+        user_texts=user_texts,
+        latest_user_text=latest_user_text,
+        conversation=conversation,
+    ):
+        validated["needs_followup"] = False
+        validated["followup_question"] = ""
+        draft["interpretation_risk"] = "high"
+        return validated
 
     if latest_user_text and any(k in latest_user_text for k in FATIGUE_KEYWORDS):
         validated["needs_followup"] = False
@@ -201,6 +251,20 @@ def validate_question(
     question = validated.get("followup_question", "")
     if not question:
         validated["needs_followup"] = False
+        return validated
+
+    user_messages = _combined_user_text(
+        user_texts=user_texts,
+        latest_user_text=latest_user_text,
+        conversation=conversation,
+    )
+    if detect_inappropriate_positive_reframe_risk(
+        user_messages=user_messages,
+        question=question,
+    ):
+        validated["needs_followup"] = False
+        validated["followup_question"] = ""
+        draft["interpretation_risk"] = "high"
         return validated
 
     if question.count("?") > 1 or question.count("？") > 1:
@@ -282,6 +346,8 @@ def generate_question(
         draft=draft,
         question_session=question_session,
         latest_user_text=latest_user,
+        user_texts=user_texts,
+        conversation=conversation,
     )
 
 

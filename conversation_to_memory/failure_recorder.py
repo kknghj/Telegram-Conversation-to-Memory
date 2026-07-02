@@ -21,6 +21,34 @@ CORRECTION_TRIGGERS: tuple[str, ...] = (
     "다시 고쳐",
     "다시 요약해",
     "왜 그렇게 해석했어",
+    "그런건 묻지마",
+    "그런 건 묻지마",
+    "묻지마",
+)
+
+NEGATIVE_EMOTION_SIGNALS: tuple[str, ...] = (
+    "걱정",
+    "한심",
+    "불안",
+    "우울",
+    "스트레스",
+    "손에 잡히지 않",
+    "아무것도 못",
+    "지침",
+    "지쳐",
+    "무기력",
+    "괴로",
+)
+
+POSITIVE_REFRAME_QUESTION_SIGNALS: tuple[str, ...] = (
+    "반대로",
+    "즐거웠던",
+    "좋았던",
+    "나아졌던",
+    "극복",
+    "기분이 좋아졌",
+    "긍정적",
+    "감사했던",
 )
 
 MEMORY_UNAVAILABLE_SIGNALS: tuple[str, ...] = (
@@ -44,6 +72,7 @@ FAILURE_TYPES = frozenset(
         "korean_misparse",
         "correction_ignored",
         "memory_unavailable_ignored",
+        "inappropriate_positive_reframe",
     }
 )
 
@@ -52,6 +81,7 @@ RULE_BY_FAILURE_TYPE: dict[str, str] = {
     "korean_misparse": "Rule 2",
     "correction_ignored": "Rule 3",
     "memory_unavailable_ignored": "Rule 1",
+    "inappropriate_positive_reframe": "Rule 5",
 }
 
 DEFAULT_EXPECTED_BEHAVIOR: dict[str, str] = {
@@ -59,6 +89,10 @@ DEFAULT_EXPECTED_BEHAVIOR: dict[str, str] = {
     "korean_misparse": "조건문을 people 관계로 압축하지 말고 conditions로 저장했어야 함.",
     "correction_ignored": "사용자 정정을 우선 반영하고 기존 오해를 반복하지 말았어야 함.",
     "memory_unavailable_ignored": "기억 불가 신호 후 추가 질문 없이 요약·저장 확인으로 종료했어야 함.",
+    "inappropriate_positive_reframe": (
+        "사용자가 걱정과 자기비판을 표현한 뒤 요약을 요청했으므로, "
+        "긍정 회상 질문을 하지 말고 원문 기반으로 바로 요약했어야 함."
+    ),
 }
 
 DEFAULT_ROOT_CAUSE: dict[str, str] = {
@@ -66,6 +100,9 @@ DEFAULT_ROOT_CAUSE: dict[str, str] = {
     "korean_misparse": "조건문을 사람 관계로 압축하여 해석함",
     "correction_ignored": "사용자 정정 후에도 기존 해석을 고집함",
     "memory_unavailable_ignored": "답변 종료 신호를 추가 질문 기회로 오인함",
+    "inappropriate_positive_reframe": (
+        "부정 감정 표현 직후 반대 감정과 즐거운 순간을 묻는 긍정 전환 질문을 생성함"
+    ),
 }
 
 
@@ -76,6 +113,47 @@ def detect_correction_trigger(text: str) -> str | None:
         if trigger in normalized:
             return trigger
     return None
+
+
+def detect_question_rejection_trigger(text: str) -> str | None:
+    """질문 거부 문구를 substring으로 탐지."""
+    normalized = text.strip()
+    for trigger in ("그런건 묻지마", "그런 건 묻지마", "묻지마"):
+        if trigger in normalized:
+            return trigger
+    return None
+
+
+def user_has_negative_emotion_context(text: str) -> bool:
+    normalized = text.strip()
+    return any(signal in normalized for signal in NEGATIVE_EMOTION_SIGNALS)
+
+
+def question_has_positive_reframe(question: str) -> bool:
+    normalized = question.strip()
+    return any(signal in normalized for signal in POSITIVE_REFRAME_QUESTION_SIGNALS)
+
+
+def detect_inappropriate_positive_reframe_risk(
+    *,
+    user_messages: str,
+    question: str,
+) -> bool:
+    """부정 감정 + 긍정 회상 질문 조합을 탐지."""
+    if not question.strip():
+        return False
+    if not user_has_negative_emotion_context(user_messages):
+        return False
+    return question_has_positive_reframe(question)
+
+
+def _last_assistant_message(conversation: list[dict[str, str]] | None) -> str:
+    if not conversation:
+        return ""
+    for turn in reversed(conversation):
+        if turn.get("role") == "assistant":
+            return str(turn.get("content", "")).strip()
+    return ""
 
 
 def user_said_memory_unavailable(text: str) -> bool:
@@ -129,6 +207,18 @@ def classify_failure_type(
     draft: dict[str, Any] | None = None,
 ) -> str:
     """정정 문구와 맥락으로 failure_type을 분류."""
+    if detect_question_rejection_trigger(user_correction):
+        rejected_question = _last_assistant_message(context)
+        user_messages = " ".join(
+            turn["content"] for turn in context if turn.get("role") == "user"
+        )
+        if detect_inappropriate_positive_reframe_risk(
+            user_messages=user_messages,
+            question=rejected_question,
+        ):
+            return "inappropriate_positive_reframe"
+        return "correction_ignored"
+
     if "기억" in user_correction and "했잖아" in user_correction:
         return "repeated_question"
 
@@ -337,6 +427,109 @@ def record_korean_misparse_failure(
         message_index=_message_index(conversation),
         log_path=log_path,
     )
+
+
+def record_inappropriate_positive_reframe_failure(
+    *,
+    user_messages: str,
+    followup_question: str,
+    conversation: list[dict[str, str]] | None,
+    user_correction: str = "",
+    conversation_id: str = "",
+    log_path: Path | None = None,
+    notes: str = "",
+) -> dict[str, Any] | None:
+    """부정 감정 직후 긍정 회상 질문 발생 시 기록."""
+    if not detect_inappropriate_positive_reframe_risk(
+        user_messages=user_messages,
+        question=followup_question,
+    ):
+        return None
+
+    context = build_failure_context(conversation, window=8)
+    if followup_question and not any(
+        turn.get("role") == "assistant" and followup_question in turn.get("content", "")
+        for turn in context
+    ):
+        context.append({"role": "assistant", "content": followup_question})
+
+    record = record_interpretation_failure(
+        failure_type="inappropriate_positive_reframe",
+        context=context,
+        user_correction=user_correction,
+        assistant_output=followup_question,
+        expected_behavior=DEFAULT_EXPECTED_BEHAVIOR["inappropriate_positive_reframe"],
+        root_cause=DEFAULT_ROOT_CAUSE["inappropriate_positive_reframe"],
+        fixed_rule=RULE_BY_FAILURE_TYPE["inappropriate_positive_reframe"],
+        severity="high",
+        conversation_id=conversation_id,
+        message_index=_message_index(conversation),
+        log_path=log_path,
+    )
+    if notes:
+        record["notes"] = notes
+    return record
+
+
+def try_prepare_question_rejection_failure(
+    *,
+    user_correction: str,
+    conversation: list[dict[str, str]] | None,
+    conversation_id: str = "",
+) -> dict[str, Any] | None:
+    """질문 거부 입력 시 직전 봇 질문을 failure snapshot으로 준비."""
+    if not detect_question_rejection_trigger(user_correction):
+        return None
+
+    context = build_failure_context(conversation, window=8)
+    rejected_question = _last_assistant_message(conversation)
+    if not rejected_question:
+        return None
+
+    failure_type = classify_failure_type(
+        user_correction=user_correction,
+        context=context,
+    )
+    if failure_type != "inappropriate_positive_reframe":
+        return None
+
+    return {
+        "failure_type": failure_type,
+        "context": context,
+        "user_correction": user_correction,
+        "expected_behavior": DEFAULT_EXPECTED_BEHAVIOR[failure_type],
+        "root_cause": DEFAULT_ROOT_CAUSE[failure_type],
+        "fixed_rule": RULE_BY_FAILURE_TYPE[failure_type],
+        "severity": "high",
+        "conversation_id": conversation_id or str(uuid.uuid4()),
+        "message_index": _message_index(conversation),
+        "assistant_output": rejected_question,
+    }
+
+
+def finalize_question_rejection_failure(
+    pending: dict[str, Any],
+    *,
+    log_path: Path | None = None,
+) -> dict[str, Any]:
+    """질문 거부 pending failure를 즉시 기록."""
+    record = record_interpretation_failure(
+        failure_type=pending["failure_type"],
+        context=pending["context"],
+        user_correction=pending["user_correction"],
+        assistant_output=pending.get("assistant_output", ""),
+        expected_behavior=pending["expected_behavior"],
+        root_cause=pending["root_cause"],
+        fixed_rule=pending["fixed_rule"],
+        severity=pending.get("severity", "high"),
+        conversation_id=pending.get("conversation_id", ""),
+        message_index=pending.get("message_index"),
+        log_path=log_path,
+    )
+    notes = pending.get("notes")
+    if notes:
+        record["notes"] = notes
+    return record
 
 
 def finalize_pending_failure(
