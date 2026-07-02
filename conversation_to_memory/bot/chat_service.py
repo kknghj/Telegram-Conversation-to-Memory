@@ -123,6 +123,21 @@ def _maybe_prepare_correction_failure(
         user_data[session.KEY_PENDING_FAILURE] = pending
 
 
+def _maybe_record_question_rejection_failure(
+    user_data: dict[str, Any],
+    text: str,
+) -> None:
+    current = session.get_session(user_data)
+    conversation = current.get("conversation", []) if current else []
+    pending = failure_recorder.try_prepare_question_rejection_failure(
+        user_correction=text,
+        conversation=conversation,
+        conversation_id=_conversation_id(user_data),
+    )
+    if pending:
+        failure_recorder.finalize_question_rejection_failure(pending)
+
+
 def _finalize_pending_failure(user_data: dict[str, Any], draft: dict[str, Any]) -> None:
     pending = user_data.pop(session.KEY_PENDING_FAILURE, None)
     if not pending:
@@ -399,6 +414,7 @@ def handle_followup(
     user_data: dict[str, Any],
     text: str,
 ) -> ChatTurnResult:
+    _maybe_record_question_rejection_failure(user_data, text)
     _maybe_prepare_correction_failure(user_data, text)
     current = session.ensure_session(user_data)
     current["user_texts"].append(text)
