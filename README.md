@@ -140,6 +140,27 @@ pytest -q
 
 초안/취소/복구 흐름은 계속 SQLite를 사용합니다. Supabase에는 사용자가 `저장`을 입력해 승인한 최종 기억만 기록됩니다.
 
+## Import Local Memories
+
+기존 `data/memories/*.json`을 Supabase `memories` 테이블로 이전하는 독립 Migration 도구입니다. 원본 JSON 파일은 수정·삭제하지 않으며, 기본 동작은 dry-run(Insert 없음)입니다.
+
+Migration 추적 컬럼을 위해 `supabase/migrations/006_add_migration_tracking_columns.sql`도 함께 실행하세요.
+
+### Dry Run (기본)
+
+```powershell
+python scripts/migrate_local_memories_to_supabase.py
+python scripts/migrate_local_memories_to_supabase.py --dry-run
+```
+
+### Apply
+
+```powershell
+python scripts/migrate_local_memories_to_supabase.py --apply
+```
+
+결과는 `logs/migration_*.log`와 `reports/migration/latest_migration_report.md`에 기록됩니다.
+
 SQLite의 `memories`, `sessions` 테이블은 향후 확장을 위해 준비되어 있으며, 현재 최종 기억의 기본 저장소는 로컬 JSON입니다.
 
 ## MVP 범위 밖
