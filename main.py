@@ -1,6 +1,5 @@
 """Conversation-to-Memory MVP entry point."""
 
-import asyncio
 import logging
 import os
 import signal
@@ -43,8 +42,8 @@ def main() -> None:
     from conversation_to_memory.bot import handlers, states
     from conversation_to_memory.startup import (
         StartupError,
-        check_telegram_connection,
         exit_on_startup_error,
+        log_telegram_bot_ready,
         run_pre_build_checks,
     )
 
@@ -95,6 +94,9 @@ def main() -> None:
     async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.error("Update 처리 중 오류", exc_info=context.error)
 
+    async def on_init(application: object) -> None:
+        await log_telegram_bot_ready(application)
+
     async def on_shutdown(_application: object) -> None:
         logger.info("Polling 종료 — Bot을 안전하게 중지합니다.")
 
@@ -107,6 +109,7 @@ def main() -> None:
         .pool_timeout(10.0)
         .get_updates_connect_timeout(30.0)
         .get_updates_read_timeout(30.0)
+        .post_init(on_init)
         .post_shutdown(on_shutdown)
         .build()
     )
@@ -115,11 +118,6 @@ def main() -> None:
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.route_message)
     )
-
-    try:
-        asyncio.run(check_telegram_connection(app))
-    except StartupError as exc:
-        exit_on_startup_error(exc)
 
     stop_signals = (signal.SIGINT, signal.SIGTERM)
     logger.info(
@@ -131,6 +129,12 @@ def main() -> None:
         app.run_polling(stop_signals=stop_signals)
     except KeyboardInterrupt:
         logger.info("KeyboardInterrupt 수신 — Bot을 안전하게 중지합니다.")
+    except Exception as exc:
+        exc_name = type(exc).__module__ + "." + type(exc).__name__
+        if exc_name.startswith("telegram."):
+            logger.error("Telegram Bot 시작 실패: %s", exc)
+            sys.exit(1)
+        raise
 
 
 if __name__ == "__main__":

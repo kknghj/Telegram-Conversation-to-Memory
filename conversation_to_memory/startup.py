@@ -60,14 +60,11 @@ def check_supabase_connection() -> None:
         raise StartupError(f"Supabase 연결 실패 (table={table}): {exc}") from exc
 
 
-async def check_telegram_connection(app: Application) -> None:
-    try:
-        bot_user = await app.bot.get_me()
-    except Exception as exc:
-        raise StartupError(f"Telegram Bot 연결 실패: {exc}") from exc
-
-    username = bot_user.username or "(username 없음)"
-    logger.info("Telegram Bot 연결 성공 (@%s, id=%s)", username, bot_user.id)
+async def log_telegram_bot_ready(app: Application) -> None:
+    """Log bot identity after Application.initialize() (same event loop as polling)."""
+    bot = app.bot
+    username = bot.username or "(username 없음)"
+    logger.info("Telegram Bot 연결 성공 (@%s, id=%s)", username, bot.id)
 
 
 def log_startup_banner() -> str:
