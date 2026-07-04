@@ -1,7 +1,9 @@
 """Conversation-to-Memory MVP entry point."""
 
+import asyncio
 import logging
 import os
+import signal
 import sys
 
 from dotenv import load_dotenv
@@ -19,17 +21,6 @@ logger = logging.getLogger(__name__)
 
 def _is_truthy(value: str | None) -> bool:
     return (value or "").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _validate_env() -> None:
-    missing = []
-    if not os.getenv("TELEGRAM_BOT_TOKEN"):
-        missing.append("TELEGRAM_BOT_TOKEN")
-    if not os.getenv("OPENAI_API_KEY"):
-        missing.append("OPENAI_API_KEY")
-    if missing:
-        logger.error("필수 환경변수 누락: %s", ", ".join(missing))
-        sys.exit(1)
 
 
 def main() -> None:
@@ -50,11 +41,18 @@ def main() -> None:
     )
 
     from conversation_to_memory.bot import handlers, states
+    from conversation_to_memory.startup import (
+        StartupError,
+        check_telegram_connection,
+        exit_on_startup_error,
+        run_pre_build_checks,
+    )
 
-    from conversation_to_memory.storage.factory import validate_storage_backend
+    try:
+        run_pre_build_checks()
+    except StartupError as exc:
+        exit_on_startup_error(exc)
 
-    _validate_env()
-    validate_storage_backend()
     db.init_db()
     cleanup_result = db.cleanup_drafts()
     logger.info("Draft cleanup: %s", cleanup_result)
@@ -97,6 +95,9 @@ def main() -> None:
     async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.error("Update 처리 중 오류", exc_info=context.error)
 
+    async def on_shutdown(_application: object) -> None:
+        logger.info("Polling 종료 — Bot을 안전하게 중지합니다.")
+
     app = (
         ApplicationBuilder()
         .token(token)
@@ -106,6 +107,7 @@ def main() -> None:
         .pool_timeout(10.0)
         .get_updates_connect_timeout(30.0)
         .get_updates_read_timeout(30.0)
+        .post_shutdown(on_shutdown)
         .build()
     )
     app.add_error_handler(error_handler)
@@ -114,8 +116,21 @@ def main() -> None:
         MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.route_message)
     )
 
-    logger.info("Memory Archive bot 시작")
-    app.run_polling()
+    try:
+        asyncio.run(check_telegram_connection(app))
+    except StartupError as exc:
+        exit_on_startup_error(exc)
+
+    stop_signals = (signal.SIGINT, signal.SIGTERM)
+    logger.info(
+        "Telegram Polling 시작 (stop_signals=%s)",
+        [signal.Signals(s).name for s in stop_signals],
+    )
+
+    try:
+        app.run_polling(stop_signals=stop_signals)
+    except KeyboardInterrupt:
+        logger.info("KeyboardInterrupt 수신 — Bot을 안전하게 중지합니다.")
 
 
 if __name__ == "__main__":
