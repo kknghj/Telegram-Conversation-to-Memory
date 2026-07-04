@@ -12,11 +12,11 @@ from conversation_to_memory import failure_recorder
 from conversation_to_memory.bot import session, states
 from conversation_to_memory.memory import question as question_service
 from conversation_to_memory.memory import service as memory_service
-from conversation_to_memory.storage.local_json import LocalJsonStorage
+from conversation_to_memory.storage.factory import create_storage
 
 logger = logging.getLogger(__name__)
 
-storage = LocalJsonStorage()
+storage = create_storage()
 
 SAVE_KEYWORD = "저장"
 CANCEL_KEYWORD = "취소"
@@ -536,7 +536,7 @@ def _save_draft(user_id: str, user_data: dict[str, Any]) -> ChatTurnResult:
     }
 
     try:
-        filepath = storage.save(full_memory)
+        filepath = storage.save(full_memory, telegram_user_id=user_id)
         draft_id = user_data.get(session.KEY_PERSISTED_DRAFT_ID)
         db.mark_draft_saved(
             draft_id,
