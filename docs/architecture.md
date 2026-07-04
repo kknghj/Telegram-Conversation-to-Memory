@@ -14,8 +14,9 @@
                     └────────────────┘      └────────────────┘
                             │
                     ┌───────▼────────┐
-                    │ Local JSON     │
-                    │ approved only  │
+                    │ Memory Storage │
+                    │ local_json or  │
+                    │ supabase       │
                     └────────────────┘
 ```
 
@@ -26,7 +27,7 @@
 | Memory Service | 원문을 구조화 JSON으로 분석 |
 | Fidelity | 원문에 없는 성장 서사·과해석 탐지 |
 | SQLite | 진행·취소·저장 초안 상태와 복구 정보 보관 |
-| Local JSON | 사용자가 승인한 최종 기억 보관 |
+| Memory Storage | 사용자가 승인한 최종 기억 보관 (`local_json` 기본, `supabase` 선택) |
 
 ## 데이터 흐름
 
@@ -53,7 +54,9 @@
    사용자 -> "저장" | "수정 ..." | "취소"
 
 6-A. [SAVE]
-   LocalJsonStorage -> 승인된 기억 JSON 저장
+   MemoryStorage (factory) -> 승인된 기억 저장
+   local_json: data/memories/*.json
+   supabase: memories 테이블
    SQLite draft -> saved 상태
 
 6-B. [EDIT]
@@ -108,7 +111,10 @@ conversation_to_memory/
 │   ├── service.py
 │   └── fidelity.py
 ├── storage/
-│   └── local_json.py
+│   ├── base.py
+│   ├── local_json.py
+│   ├── supabase.py
+│   └── factory.py
 └── prompts/
     └── memory_archive_system_prompt.txt
 ```
@@ -132,7 +138,16 @@ OpenAI 응답은 `normalize_draft()`로 필드를 정규화한 뒤 `validate_dra
 
 ### 승인 기억
 
-`LocalJsonStorage.save(memory) -> str` 계약으로 `data/memories/`에 저장합니다. 향후 Supabase 구현도 같은 저장 인터페이스를 따릅니다.
+`MemoryStorage.save(memory) -> str` 계약을 따릅니다. `STORAGE_BACKEND` 환경변수로 구현을 선택합니다.
+
+| `STORAGE_BACKEND` | 구현 | 저장 위치 |
+|-------------------|------|-----------|
+| `local_json` (기본) | `LocalJsonStorage` | `data/memories/` JSON 파일 |
+| `supabase` | `SupabaseStorage` | Supabase `memories` 테이블 |
+
+Supabase row는 조회용 컬럼과 원본 전체 `raw_memory` jsonb를 함께 저장합니다. 테이블 생성 SQL은 `supabase/migrations/005_create_memories.sql`입니다.
+
+초안/취소/복구는 계속 SQLite(`data/memory_archive.db`)만 사용합니다.
 
 ### SQLite 초안
 
@@ -151,6 +166,7 @@ OpenAI 응답은 `normalize_draft()`로 필드를 정규화한 뒤 `validate_dra
 ## 보안과 운영
 
 - `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY`는 `.env`에서 로드합니다.
+- `STORAGE_BACKEND=supabase`일 때 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`가 필요합니다.
 - `.env`, 가상환경, 저장된 기억은 Git 제외 대상으로 설정합니다.
 - 앱 시작 시 SQLite 테이블 생성과 초안 정리를 수행합니다.
 - 승인 전 초안과 승인된 최종 기억은 서로 다른 저장 책임을 가집니다.

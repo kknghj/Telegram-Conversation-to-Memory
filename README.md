@@ -22,7 +22,7 @@ Telegram에서 사용자가 남긴 이야기를 **있는 그대로 정리하고*
 5. 정확도 확인이 필요하면 후속 질문 최대 1개
 6. 요약과 구조화 JSON 검토
 7. `저장`, `수정`, `취소` 중 선택
-8. `저장`한 기억만 `data/memories/`에 JSON으로 보관
+8. `저장`한 기억만 최종 저장소에 보관 (`local_json` 기본, `supabase` 선택)
 9. 취소한 초안은 SQLite에 보관하고 이후 `수정`으로 복구 가능
 
 ## 프로젝트 구조
@@ -41,7 +41,10 @@ Telegram에서 사용자가 남긴 이야기를 **있는 그대로 정리하고*
 │   │   ├── service.py               # OpenAI 원문 분석·구조화
 │   │   └── fidelity.py              # 과해석·성장 서사 검사
 │   ├── storage/
-│   │   └── local_json.py            # 승인된 기억 JSON 저장
+│   │   ├── base.py                  # MemoryStorage 인터페이스
+│   │   ├── local_json.py            # 승인된 기억 JSON 저장 (기본)
+│   │   ├── supabase.py              # 승인된 기억 Supabase 저장 (선택)
+│   │   └── factory.py               # STORAGE_BACKEND 선택
 │   └── prompts/
 │       └── memory_archive_system_prompt.txt
 ├── data/
@@ -68,6 +71,10 @@ python main.py
 | `TELEGRAM_BOT_TOKEN` | Telegram BotFather에서 발급한 토큰 |
 | `OPENAI_API_KEY` | OpenAI API 키 |
 | `OPENAI_MODEL` | 선택 사항, 기본값 `gpt-4o-mini` |
+| `STORAGE_BACKEND` | 선택 사항, 기본값 `local_json` (`supabase` 가능) |
+| `SUPABASE_URL` | `STORAGE_BACKEND=supabase`일 때 필요 |
+| `SUPABASE_SECRET_KEY` | `STORAGE_BACKEND=supabase`일 때 필요 (서버 전용) |
+| `SUPABASE_MEMORIES_TABLE` | 선택 사항, 기본값 `memories` |
 
 Telegram에서 `/start` 또는 `기록 시작`을 보냅니다.
 
@@ -118,18 +125,27 @@ pytest -q
 
 ## 현재 저장 전략
 
-- 승인된 기억: `data/memories/YYYY-MM-DD_HHMMSS.json`
-- 진행·취소·저장 초안 상태: `data/memory_archive.db`
+- 승인된 기억 (기본): `data/memories/YYYY-MM-DD_HHMMSS.json` (`STORAGE_BACKEND=local_json`)
+- 승인된 기억 (선택): Supabase `memories` 테이블 (`STORAGE_BACKEND=supabase`)
+- 진행·취소·저장 초안 상태: `data/memory_archive.db` (SQLite, 변경 없음)
 - `cancelled`: 30일 후 삭제
 - 7일 이상 방치된 `active`: `cancelled`로 전환
 - `saved`: 삭제하지 않음
 
-SQLite의 `memories`, `sessions` 테이블은 향후 확장을 위해 준비되어 있으며, 현재 최종 기억의 기준 저장소는 로컬 JSON입니다.
+### Supabase 최종 기억 저장 (선택)
+
+1. Supabase 프로젝트를 만들고 SQL Editor 또는 CLI로 `supabase/migrations/005_create_memories.sql`을 실행합니다.
+2. `.env`에 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 설정합니다.
+3. `STORAGE_BACKEND=supabase`로 변경합니다.
+
+초안/취소/복구 흐름은 계속 SQLite를 사용합니다. Supabase에는 사용자가 `저장`을 입력해 승인한 최종 기억만 기록됩니다.
+
+SQLite의 `memories`, `sessions` 테이블은 향후 확장을 위해 준비되어 있으며, 현재 최종 기억의 기본 저장소는 로컬 JSON입니다.
 
 ## MVP 범위 밖
 
 - 상담·코칭·자기계발 조언
-- Supabase와 다중 사용자 인증
+- Supabase 저장소 연동은 선택 기능으로 추가되었으며, 다중 사용자 인증과 웹 대시보드는 아직 범위 밖입니다.
 - Vector DB와 의미 검색
 - 자동 주간 회고
 - Notion·Hermes 연동

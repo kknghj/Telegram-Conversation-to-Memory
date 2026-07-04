@@ -51,7 +51,10 @@ def main() -> None:
 
     from conversation_to_memory.bot import handlers, states
 
+    from conversation_to_memory.storage.factory import validate_storage_backend
+
     _validate_env()
+    validate_storage_backend()
     db.init_db()
     cleanup_result = db.cleanup_drafts()
     logger.info("Draft cleanup: %s", cleanup_result)

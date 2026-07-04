@@ -176,7 +176,7 @@ def test_interactive_review_y_saves(tmp_path):
     saved_payloads: list[dict] = []
     outputs: list[str] = []
 
-    def fake_save(memory):
+    def fake_save(memory, **kwargs):
         saved_payloads.append(memory)
         return str(memories_dir / "saved.json")
 
@@ -266,7 +266,7 @@ def test_save_final_adds_transcript_replay_metadata(tmp_path):
     source.write_text("2026-06-21\n오늘 배포했다.", encoding="utf-8")
     saved_payloads: list[dict] = []
 
-    def fake_save(memory):
+    def fake_save(memory, **kwargs):
         saved_payloads.append(memory)
         return str(tmp_path / "saved.json")
 
