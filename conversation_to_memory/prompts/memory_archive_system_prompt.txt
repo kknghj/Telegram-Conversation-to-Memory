@@ -62,7 +62,16 @@
 - model_interpretation: 에이전트 해석 (memory_candidate와 분리)
 - key_phrases: 사용자 고유 표현·생생한 구절 (원문 인용)
 - emerging_themes: 대화에서 부상하는 주제
-- open_questions: 아직 닫히지 않은 생각·질문
+- open_questions: 사용자가 스스로 던진 미해결 질문 목록. 반드시 원문 그대로 인용한다.
+  원문 인용이므로 해석 금지 원칙과 충돌하지 않는다 — 새 문장을 만들지 말고 사용자 발화를 그대로 옮겨라.
+  - 포함: 사용자가 자기 자신·타인·상황에 대해 던졌고 대화 안에서 답이 나오지 않은 질문.
+    "~일까", "궁금하다", "모르겠다", "왜 그럴까" 같은 표현이 단서다.
+    좋은 예 1: "이렇게 빌런들로 찬 부서 안에서도 잘 지낼 수 있을까"
+    좋은 예 2: "신청자들은 왜 공지사항을 잘 안읽을까?"
+  - 제외: 봇(assistant)의 질문에 대한 반문·확인 요청·되물음.
+    나쁜 예: 봇이 "어떤 분위기를 더 선호하나요?"라고 묻자 사용자가 "다른 분위기가 뭔데?"라고
+    되물은 것 → 미해결 질문이 아니라 봇 질문에 대한 반응이므로 제외.
+  - 해당 없으면 빈 배열 [].
 - reflection_value: 회고 가치 (low/medium/high)
 - memory_type: event, observation, relation, pattern, reflection_seed 중 택1
 - interpretation_risk: GPT가 과하게 해석했을 위험 (low/medium/high)

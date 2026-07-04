@@ -23,7 +23,7 @@ MVP_UPSERT_CONFLICT_COLUMN = "evaluation_id"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MVP_JSON = (
-    PROJECT_ROOT / "data" / "evaluation" / "mvp_round2_2026-06-19.json"
+    PROJECT_ROOT / "data" / "evaluation" / "mvp_round3_2026-07-04.json"
 )
 DEFAULT_PATTERN_CARDS_JSONL = (
     PROJECT_ROOT / "data" / "evaluation" / "reflection_evaluations.jsonl"
@@ -39,6 +39,7 @@ def load_mvp_evaluation(path: str | Path | None = None) -> dict[str, Any]:
 
 def mvp_evaluation_to_supabase_row(data: dict[str, Any]) -> dict[str, Any]:
     """MVP evaluation dict → mvp_evaluations table row."""
+    period = data.get("period") or {}
     return {
         "evaluation_id": data["evaluation_id"],
         "evaluation_type": data["evaluation_type"],
@@ -54,6 +55,12 @@ def mvp_evaluation_to_supabase_row(data: dict[str, Any]) -> dict[str, Any]:
         "top_insights": data.get("top_insights"),
         "main_limitation": data.get("main_limitation"),
         "next_milestone": data.get("next_milestone"),
+        "reflection_judgment": data.get("reflection_judgment"),
+        "question_quality_grade": data.get("question_quality_grade"),
+        "period_start": data.get("period_start") or period.get("start"),
+        "period_end": data.get("period_end") or period.get("end"),
+        "failure_count": data.get("failure_count"),
+        "pattern_cards": data.get("pattern_cards"),
         "payload": data,
     }
 

@@ -1,0 +1,141 @@
+{
+  "evaluation_id": "mvp_round3-2026-07-04",
+  "evaluation_type": "mvp_round",
+  "round": 3,
+  "evaluated_at": "2026-07-04",
+  "memory_count": 88,
+  "previous_memory_count": 50,
+  "new_memory_count": 38,
+  "period": {
+    "start": "2026-06-09",
+    "end": "2026-07-04"
+  },
+  "period_start": "2026-06-09",
+  "period_end": "2026-07-04",
+  "final_judgment": "partial_success",
+  "reflection_judgment": "partial_success_to_success",
+  "question_quality_grade": "fair",
+  "failure_count": 4,
+  "previous_judgment": "conditional_success",
+  "score": null,
+  "previous_score": 4.08,
+  "user_validated": true,
+  "user_validation_date": "2026-07-04",
+  "user_validation_summary": {
+    "accepted_insights": [
+      "조직 불확실 → 회피·이탈 욕구",
+      "회피 대상 = 시작 전 새 컨택 업무",
+      "관계 밀도 ↔ 정서 디폴트 회복"
+    ],
+    "revised_insights": [
+      "10년 관찰 메타실험 (독서·기록·AI 동일 축 확장은 revise)"
+    ],
+    "discarded_insights": [
+      "독서 = 별개 자기탐구 실험실"
+    ],
+    "completed_since_round2": [
+      "reflection_value missing 13건 백필 → 0건",
+      "3차 패턴 카드 사용자 검증 5건"
+    ]
+  },
+  "user_validated_items": [
+    {
+      "item": "PC-R3-01 조직 불확실 → 회피·이탈",
+      "user_judgment": "accepted",
+      "note": "조직 개편·인사 불확실성과 회피·이탈 욕구의 동반 패턴을 인정함"
+    },
+    {
+      "item": "PC-R3-02 독서 = 자기탐구 실험실",
+      "user_judgment": "rejected",
+      "note": "독서를 별개의 자기탐구 실험실로 보는 해석은 틀렸다고 판단함"
+    },
+    {
+      "item": "PC-R3-03 10년 관찰 메타실험 축",
+      "user_judgment": "partial",
+      "note": "메타실험 선언 자체는 맞으나 독서·기록·AI를 하나의 축으로 묶는 확장은 부분적으로만 동의함"
+    },
+    {
+      "item": "PC-R3-04 회피 = 시작 전 새 컨택",
+      "user_judgment": "accepted",
+      "note": "자동화 몰입과 회피의 대칭 관점을 인정함"
+    },
+    {
+      "item": "PC-R3-05 관계 밀도 ↔ 정서 회복",
+      "user_judgment": "accepted",
+      "note": "12~1월 우울의 사후 인식 패턴을 인정함"
+    }
+  ],
+  "pattern_cards": [
+    {
+      "card_id": "MVP3-PC-R3-01",
+      "title": "조직 불확실성이 회피·이탈 욕구와 동반",
+      "confidence": 4,
+      "action": "keep",
+      "accuracy": "correct"
+    },
+    {
+      "card_id": "MVP3-PC-R3-02",
+      "title": "독서가 직장과 별개의 자기탐구 실험실 역할",
+      "confidence": 3,
+      "action": "discard",
+      "accuracy": "wrong"
+    },
+    {
+      "card_id": "MVP3-PC-R3-03",
+      "title": "텔레그램 MVP = 10년 관찰자 메타실험",
+      "confidence": 5,
+      "action": "revise",
+      "accuracy": "partial"
+    },
+    {
+      "card_id": "MVP3-PC-R3-04",
+      "title": "회피 대상은 시작 전 새 컨택 업무",
+      "confidence": 3,
+      "action": "keep",
+      "accuracy": "correct"
+    },
+    {
+      "card_id": "MVP3-PC-R3-05",
+      "title": "관계 밀도 증가와 정서 디폴트 회복",
+      "confidence": 3,
+      "action": "keep",
+      "accuracy": "correct"
+    }
+  ],
+  "top_insights": [
+    "조직개편·인사 불확실성이 반복될 때 회피·이탈 욕구가 동반된다.",
+    "회피는 '실패한 일'이 아니라 '해보지 않은 새 컨택'에서 발생할 수 있다 — 자동화 몰입과 대칭.",
+    "12~1월 우울은 당시엔 인식하지 못했으나, 관계 밀도 변화 후 사후에 드러난다.",
+    "10년 관찰 메타실험 선언은 유효하나, 독서·기록·AI를 하나의 축으로 묶는 것은 과확장."
+  ],
+  "main_limitation": "자동 memory_link·open_questions 매칭·주간 회고 미구현. 해설은 수동 평가에 의존.",
+  "next_milestone": "100건 + open_questions 자동 매칭 POC + 질문 Rule 2·5 prod hardening + 4차 KPI 재평가",
+  "rubric_scores": {
+    "pattern_discovery": 4.0,
+    "temporal_connection": 4.5,
+    "novel_perspective": 4.0,
+    "evidence_based": 4.5,
+    "narrative": 4.0,
+    "reflection_value_mvp": 4.0,
+    "question_quality": 2.5,
+    "weighted_reflection_total": 4.1,
+    "note": "회고 가치와 질문 품질은 별도 점수 — 합산하지 않음"
+  },
+  "data_health": {
+    "schema_v2_rate": 0.955,
+    "reflection_value_missing": 0,
+    "primary_evidence_rate": 1.0,
+    "days_span": 26,
+    "open_questions_filled": 1,
+    "interpretation_failures_logged": 4
+  },
+  "judgment_rationale": [
+    "88건·26일로 2차(11일) 대비 장기 서사 판단이 가능해졌다.",
+    "사용자가 3차 패턴 카드 5건 중 accepted 3건, revise 1건, discard 1건으로 검증했다.",
+    "reflection_value missing 13건 백필이 완료되어 데이터 건강성이 개선됐다.",
+    "질문 품질은 Fair — Rule 5·2 실전 실패 2건, 로깅 커버리지 부족.",
+    "자동 해설·memory_link 미운영으로 Strong Success에는 미달."
+  ],
+  "project_progress_percent": 38,
+  "project_progress_note": "믿을 수 있는 아카이브(~75%)는 갖췄으나 자동 해설(~10%)은 초기 단계"
+}

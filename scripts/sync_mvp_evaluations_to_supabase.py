@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MVP_JSON = PROJECT_ROOT / "data" / "evaluation" / "mvp_round2_2026-06-19.json"
+DEFAULT_MVP_JSON = PROJECT_ROOT / "data" / "evaluation" / "mvp_round3_2026-07-04.json"
 DEFAULT_PATTERN_CARDS = (
     PROJECT_ROOT / "data" / "evaluation" / "reflection_evaluations.jsonl"
 )

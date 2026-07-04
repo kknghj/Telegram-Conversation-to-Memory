@@ -53,6 +53,25 @@ class TestMvpEvaluationToSupabaseRow:
         assert row["user_validated"] is True
         assert row["payload"] == data
 
+    def test_maps_round3_extension_columns(self):
+        data = _sample_mvp_data(
+            evaluation_id="mvp_round3-2026-07-04",
+            round=3,
+            period={"start": "2026-06-09", "end": "2026-07-04"},
+            reflection_judgment="partial_success_to_success",
+            question_quality_grade="fair",
+            failure_count=4,
+            pattern_cards=[{"card_id": "MVP3-PC-R3-01"}],
+        )
+        row = mvp_evaluation_to_supabase_row(data)
+
+        assert row["period_start"] == "2026-06-09"
+        assert row["period_end"] == "2026-07-04"
+        assert row["reflection_judgment"] == "partial_success_to_success"
+        assert row["question_quality_grade"] == "fair"
+        assert row["failure_count"] == 4
+        assert row["pattern_cards"][0]["card_id"] == "MVP3-PC-R3-01"
+
 
 class TestMvpPatternCardMapping:
     def test_maps_to_reflection_row(self):

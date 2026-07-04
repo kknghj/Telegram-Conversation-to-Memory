@@ -1,174 +1,252 @@
 # Evaluation Log — Supabase Integration
 
-회고 카드 **사용자 평가 observation log**를 Supabase에 remote mirror로 연결하는 방법이다.
+회고 평가·MVP 스냅샷·질문 실패 로그를 Supabase **remote mirror**로 연결하는 방법이다.
 
-## 왜 JSONL을 canonical source로 유지하는가
+## 저장소 역할
 
-평가 로그는 학습 데이터가 아니라 **관찰 가능한 사실**의 기록이다.
+| 데이터 | Canonical source | Supabase 테이블 |
+|--------|------------------|-----------------|
+| 패턴 카드 사용자 평가 | `data/evaluation/reflection_evaluations.jsonl` | `reflection_evaluations` |
+| MVP 라운드 스냅샷 | `data/evaluation/mvp_round*_*.json` | `mvp_evaluations` |
+| AI 질문/해석 실패 | `data/evaluation/interpretation_failures.jsonl` | `interpretation_failures` |
 
-| 역할 | 저장소 |
+JSONL/JSON이 원본이다. Supabase sync는 **best-effort mirror** — 실패해도 로컬 저장은 유지된다.
+
+---
+
+## 1. Supabase 프로젝트 준비
+
+1. [Supabase Dashboard](https://supabase.com/dashboard)에서 프로젝트 생성
+2. **Project Settings → API**에서 확인:
+   - `Project URL` → `SUPABASE_URL`
+   - `service_role` secret → `SUPABASE_SECRET_KEY` (브라우저·GitHub에 노출 금지)
+
+---
+
+## 2. 마이그레이션 적용
+
+`supabase/migrations/` 순서대로 SQL Editor에 실행한다.
+
+| 파일 | 테이블 |
 |------|--------|
-| **Canonical source** | `data/evaluation/reflection_failures.jsonl` |
-| **Remote mirror / query layer** | Supabase `reflection_evaluations` |
+| `001_create_reflection_evaluations.sql` | `reflection_evaluations` |
+| `002_create_mvp_evaluations.sql` | `mvp_evaluations` |
+| `003_create_interpretation_failures.sql` | `interpretation_failures` (신규) |
+| `004_extend_mvp_evaluations.sql` | `mvp_evaluations` 컬럼 확장 |
 
-JSONL을 원본으로 두는 이유:
+### Dashboard에서 실행
 
-1. **오프라인·로컬 우선** — Telegram 봇과 평가 스크립트는 네트워크 없이도 동작해야 한다.
-2. **단순 복구** — 파일 하나를 백업·diff·gitignore 정책으로 관리하기 쉽다.
-3. **Supabase 장애 격리** — mirror sync 실패가 평가 저장 자체를 막지 않는다.
-4. **자동 학습 금지** — 현재 단계에서는 observation log만 쌓고, Supabase는 조회·집계용이다.
+1. Supabase → **SQL Editor** → New query
+2. `001` → Run, `002` → Run, `003` → Run, `004` → Run (순서 유지)
 
-Supabase sync는 **best-effort mirror**이다. JSONL append가 먼저 성공하면, Supabase 실패는 warning만 남긴다.
+### CLI 사용 (선택)
 
----
-
-## Supabase 테이블 구조
-
-마이그레이션: `supabase/migrations/001_create_reflection_evaluations.sql`
-
-테이블: `reflection_evaluations`
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| `id` | uuid PK | `gen_random_uuid()` |
-| `evaluation_id` | text | 평가 세션/배치 ID |
-| `evaluated_at` | timestamptz | 사용자 평가 시각 |
-| `memory_count` | integer | 평가 당시 메모리 건수 |
-| `card_id` | text | 카드 ID |
-| `card_type` | text | 카드 유형 |
-| `accuracy` | text | `correct` \| `partial` \| `wrong` |
-| `interesting` | boolean | 가치: 흥미 |
-| `revisit` | boolean | 가치: 재방문 |
-| `evidence` | text | `sufficient` \| `weak` \| `wrong` |
-| `failure_type` | text null | failure taxonomy |
-| `user_comment` | text null | 사용자 코멘트 |
-| `action` | text | `keep` \| `revise` \| `discard` |
-| `raw` | jsonb | 원본 `CardEvaluation` JSON |
-| `created_at` | timestamptz | mirror 최초 insert |
-| `updated_at` | timestamptz | mirror 마지막 upsert |
-
-제약:
-
-- `UNIQUE (evaluation_id, card_id)` — upsert conflict key
-- CHECK constraints on `accuracy`, `evidence`, `action`, `failure_type`
-- RLS enabled (service-role client only in this phase)
+```powershell
+supabase link --project-ref <your-project-ref>
+supabase db push
+```
 
 ---
 
-## 환경변수 설정
+## 3. 환경변수
 
-`.env` (`.env.example` 참고):
+`.env`:
 
 ```env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SECRET_KEY=your_service_role_secret_key
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_SECRET_KEY=eyJhbGciOi...
 ```
 
-주의:
+확인:
 
-- `SUPABASE_SECRET_KEY`는 **service role / secret key** — GitHub에 커밋하지 않는다.
-- 브라우저·프론트엔드·Telegram 클라이언트에서 사용하지 않는다.
-- 서버/스크립트 전용이다.
+```powershell
+python -c "from app.evaluation_supabase import is_supabase_configured; print(is_supabase_configured())"
+```
 
-환경변수가 없으면:
-
-- `append_card_evaluation()` — JSONL만 저장
-- `sync_evaluation_to_supabase()` — `False` 반환
-- `load_evaluations_from_supabase()` — `[]` 반환
+`True`면 연동 준비 완료.
 
 ---
 
-## 마이그레이션 적용
+## 4. 테이블 구조 요약
 
-Supabase CLI 또는 Dashboard SQL Editor에서 실행:
+### reflection_evaluations
 
-```bash
-supabase db push
-# 또는 Dashboard → SQL Editor → 001_create_reflection_evaluations.sql 붙여넣기
-```
+패턴 카드 1장당 1행. upsert key: `(evaluation_id, card_id)`
+
+| 컬럼 | 설명 |
+|------|------|
+| `accuracy` | `correct` \| `partial` \| `wrong` |
+| `action` | `keep` \| `revise` \| `discard` |
+| `raw` | 원본 JSONL 행 |
+
+### mvp_evaluations
+
+MVP 라운드 1회당 1행. upsert key: `evaluation_id`
+
+| 컬럼 | 설명 |
+|------|------|
+| `final_judgment` | `fail` \| `not_ready` \| `partial_success` \| `conditional_success` \| `success` \| `strong_success` |
+| `reflection_judgment` | 회고 가치 판정 (별도) |
+| `question_quality_grade` | `excellent` \| `good` \| `fair` \| `poor` |
+| `period_start`, `period_end` | 평가 기간 |
+| `failure_count` | 평가 시점 interpretation_failures 건수 |
+| `pattern_cards` | 패턴 카드 요약 JSON |
+| `payload` | 전체 MVP JSON |
+
+### interpretation_failures
+
+질문/해석 실패 1건당 1행. upsert key: `failure_key` (`conversation_id|timestamp|failure_type`)
+
+| 컬럼 | 설명 |
+|------|------|
+| `failure_type` | `repeated_question`, `korean_misparse`, `correction_ignored`, `memory_unavailable_ignored`, `inappropriate_positive_reframe` |
+| `severity` | `low` \| `medium` \| `high` |
+| `context` | 실패 직전 대화 (jsonb) |
+| `fixed_rule` | Rule 1~5 |
+| `prevented_by_rule` | Rule 적용 후 재발 여부 (선택) |
+| `raw` | 원본 JSONL 행 |
 
 ---
 
-## 일반 사용 흐름
+## 5. 데이터 동기화
 
-### 1. 평가 저장 (자동 mirror)
+### 패턴 카드 평가 (reflection_evaluations)
+
+```powershell
+python scripts/sync_evaluations_to_supabase.py --path data/evaluation/reflection_evaluations.jsonl
+```
+
+또는 Python:
 
 ```python
-from conversation_to_memory.reflection import append_card_evaluation
-
-append_card_evaluation({...})
-# 1) JSONL append
-# 2) SUPABASE_* 설정 시 upsert 시도 (실패해도 JSONL 성공)
+from app.evaluation_supabase import sync_jsonl_to_supabase
+sync_jsonl_to_supabase("data/evaluation/reflection_evaluations.jsonl")
 ```
 
-`sync_supabase=False`로 mirror만 건너뛸 수 있다.
-
-### 2. 기존 JSONL 백필
+### MVP 라운드 스냅샷 (mvp_evaluations + 관련 패턴 카드)
 
 ```powershell
-python scripts/sync_evaluations_to_supabase.py
+# 3차 (기본값)
+python scripts/sync_mvp_evaluations_to_supabase.py
+
+# 2차
+python scripts/sync_mvp_evaluations_to_supabase.py --path data/evaluation/mvp_round2_2026-06-19.json
 ```
 
-옵션:
+### 한 번에 전체 동기화 (3차 MVP + 패턴 카드 + 질문 실패)
 
 ```powershell
-python scripts/sync_evaluations_to_supabase.py --path data/evaluation/reflection_failures.jsonl
+python scripts/sync_all_evaluations_to_supabase.py
+```
+
+3차 MVP JSON: `data/evaluation/mvp_round3_2026-07-04.json`
+
+### 질문/해석 실패 (interpretation_failures)
+
+```powershell
+python scripts/sync_interpretation_failures_to_supabase.py
 ```
 
 출력 예:
 
 ```json
 {
-  "total": 5,
-  "synced": 5,
+  "total": 4,
+  "synced": 4,
   "failed": 0,
   "failed_items": []
 }
 ```
 
-### 3. Supabase에서 조회
+---
+
+## 6. 조회 예시
 
 ```python
 from app.evaluation_supabase import load_evaluations_from_supabase
+from app.mvp_evaluation_supabase import load_mvp_evaluations_from_supabase
+from app.interpretation_failures_supabase import load_interpretation_failures_from_supabase
 
-rows = load_evaluations_from_supabase(evaluation_id="eval-001")
+# 3차 패턴 카드 평가
+cards = load_evaluations_from_supabase(evaluation_id="mvp_round3-2026-07-04")
+
+# MVP 스냅샷
+mvp = load_mvp_evaluations_from_supabase(evaluation_id="mvp_round3-2026-07-04")
+
+# 질문 실패 유형별
+failures = load_interpretation_failures_from_supabase(
+    failure_type="inappropriate_positive_reframe"
+)
+```
+
+Dashboard SQL:
+
+```sql
+-- 3차 패턴 카드 acceptance rate
+SELECT accuracy, COUNT(*)
+FROM reflection_evaluations
+WHERE evaluation_id = 'mvp_round3-2026-07-04'
+GROUP BY accuracy;
+
+-- failure 유형 분포
+SELECT failure_type, severity, COUNT(*)
+FROM interpretation_failures
+GROUP BY failure_type, severity;
 ```
 
 ---
 
-## 실패 시 복구
+## 7. 실패 시 복구
 
 | 상황 | 조치 |
 |------|------|
-| append 중 Supabase sync 실패 | JSONL은 이미 저장됨 → `scripts/sync_evaluations_to_supabase.py` 재실행 |
-| 백필 일부 실패 (`failed_items`) | 실패 항목 확인 후 네트워크/키/스키마 점검 → 스크립트 재실행 (upsert idempotent) |
-| Supabase 스키마 불일치 | migration 재적용, CHECK constraint 위반 row 확인 |
-| JSONL 손상 | git/백업에서 복구 후 백필 |
+| sync 실패 | JSONL/JSON은 로컬에 있음 → 해당 sync 스크립트 재실행 (upsert idempotent) |
+| CHECK constraint 오류 | migration 003/004 재확인, enum 값 소문자 확인 |
+| RLS 차단 | service role key 사용 여부 확인 (anon key 아님) |
 
-복구 원칙: **항상 JSONL을 기준으로 Supabase를 다시 upsert**한다. Supabase → JSONL 역동기화는 현재 단계에서 하지 않는다.
+원칙: **항상 로컬 JSONL/JSON → Supabase 방향**으로만 동기화한다.
 
 ---
 
-## 관련 코드
+## 8. 관련 코드
 
 | 파일 | 역할 |
 |------|------|
-| `conversation_to_memory/reflection/evaluation_models.py` | Pydantic 모델 |
-| `conversation_to_memory/reflection/evaluation_storage.py` | JSONL append/load/aggregate + optional sync |
-| `app/evaluation_supabase.py` | Supabase client, upsert, query |
-| `scripts/sync_evaluations_to_supabase.py` | JSONL → Supabase 백필 |
-| `tests/test_evaluation_supabase.py` | mock 기반 테스트 |
+| `app/evaluation_supabase.py` | reflection_evaluations |
+| `app/mvp_evaluation_supabase.py` | mvp_evaluations |
+| `app/interpretation_failures_supabase.py` | interpretation_failures |
+| `scripts/sync_evaluations_to_supabase.py` | 패턴 카드 백필 |
+| `scripts/sync_mvp_evaluations_to_supabase.py` | MVP 백필 |
+| `scripts/sync_interpretation_failures_to_supabase.py` | 실패 로그 백필 |
 
 ---
 
-## 다음 단계
+## 9. MVP JSON 3차 예시 (선택)
 
-현재: **평가 observation log mirror**만 Supabase에 연결.
+`mvp_evaluations`에 3차를 올리려면 JSON에 확장 필드를 포함한다:
 
-50건 이상 평가가 쌓인 뒤 다음을 판단한다:
+```json
+{
+  "evaluation_id": "mvp_round3-2026-07-04",
+  "evaluation_type": "mvp_round",
+  "round": 3,
+  "evaluated_at": "2026-07-04",
+  "memory_count": 88,
+  "previous_memory_count": 50,
+  "new_memory_count": 38,
+  "period": { "start": "2026-06-09", "end": "2026-07-04" },
+  "final_judgment": "partial_success",
+  "reflection_judgment": "partial_success_to_success",
+  "question_quality_grade": "fair",
+  "failure_count": 4,
+  "score": null,
+  "user_validated": true,
+  "pattern_cards": [
+    { "card_id": "MVP3-PC-R3-01", "action": "keep" },
+    { "card_id": "MVP3-PC-R3-02", "action": "discard" }
+  ],
+  "payload": {}
+}
+```
 
-- failure 분포·acceptance rate가 query layer에서 유용한가
-- `memories` 전체를 Supabase에 mirror할 가치가 있는가
-- RLS 정책·다중 사용자 확장이 필요한가
-
-그 전까지는 **memories canonical source = 로컬 JSON** 정책을 유지한다.
+`payload`에는 전체 평가 리포트를 넣고, sync 시 `mvp_evaluation_to_supabase_row()`가 flat 컬럼으로 매핑한다.
