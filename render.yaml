@@ -1,0 +1,32 @@
+# Render Blueprint — Background Worker (Telegram Polling Bot)
+# https://render.com/docs/background-workers
+#
+# Dashboard에서 "New > Blueprint"로 이 파일을 연결하거나,
+# Worker를 수동 생성할 때 아래 build/start 명령을 그대로 사용하세요.
+
+services:
+  - type: worker
+    name: conversation-to-memory-bot
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: STORAGE_BACKEND
+        value: supabase
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: TELEGRAM_OFFLINE_MODE
+        value: "false"
+      - key: SUPABASE_MEMORIES_TABLE
+        value: memories
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false

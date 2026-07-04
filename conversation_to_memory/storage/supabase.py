@@ -51,6 +51,17 @@ def _build_row(memory: dict, *, telegram_user_id: str | None = None) -> dict[str
     }
 
 
+def verify_connection() -> None:
+    """Verify Supabase credentials and table reachability at startup."""
+    storage = SupabaseStorage()
+    try:
+        storage._get_client().table(storage.table_name).select("id").limit(1).execute()
+    except SupabaseStorageError:
+        raise
+    except Exception as exc:
+        raise SupabaseStorageError(f"Supabase connection check failed: {exc}") from exc
+
+
 class SupabaseStorage(MemoryStorage):
     """승인된 기억을 Supabase memories 테이블에 저장."""
 
