@@ -8,15 +8,17 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app import database as db
-from conversation_to_memory import failure_recorder
-from conversation_to_memory.bot import session, states
+from conversation_to_memory.bot import (
+    failure_hooks,
+    question_flow,
+    save_service,
+    session,
+    states,
+)
 from conversation_to_memory.memory import question as question_service
 from conversation_to_memory.memory import service as memory_service
-from conversation_to_memory.storage.factory import create_storage
 
 logger = logging.getLogger(__name__)
-
-storage = create_storage()
 
 SAVE_KEYWORD = "저장"
 CANCEL_KEYWORD = "취소"
@@ -96,137 +98,8 @@ def _persist_cancelled_draft(
     user_data[session.KEY_PERSISTED_DRAFT_ID] = draft_id
 
 
-def _conversation_id(user_data: dict[str, Any]) -> str:
-    draft_id = user_data.get(session.KEY_PERSISTED_DRAFT_ID)
-    if draft_id:
-        return str(draft_id)
-    current = session.get_session(user_data)
-    if current and current.get("user_texts"):
-        return f"session-{hash(tuple(current['user_texts'])) & 0xFFFFFFFF:08x}"
-    return ""
-
-
-def _maybe_prepare_correction_failure(
-    user_data: dict[str, Any],
-    text: str,
-) -> None:
-    current = session.get_session(user_data)
-    conversation = current.get("conversation", []) if current else []
-    draft = session.get_draft(user_data)
-    pending = failure_recorder.try_prepare_correction_failure(
-        user_correction=text,
-        conversation=conversation,
-        draft=draft,
-        conversation_id=_conversation_id(user_data),
-    )
-    if pending:
-        user_data[session.KEY_PENDING_FAILURE] = pending
-
-
-def _maybe_record_question_rejection_failure(
-    user_data: dict[str, Any],
-    text: str,
-) -> None:
-    current = session.get_session(user_data)
-    conversation = current.get("conversation", []) if current else []
-    pending = failure_recorder.try_prepare_question_rejection_failure(
-        user_correction=text,
-        conversation=conversation,
-        conversation_id=_conversation_id(user_data),
-    )
-    if pending:
-        failure_recorder.finalize_question_rejection_failure(pending)
-
-
-def _finalize_pending_failure(user_data: dict[str, Any], draft: dict[str, Any]) -> None:
-    pending = user_data.pop(session.KEY_PENDING_FAILURE, None)
-    if not pending:
-        return
-    assistant_output = _review_message(draft)
-    failure_recorder.finalize_pending_failure(pending, assistant_output)
-
-
-def _maybe_record_followup_violation(
-    user_data: dict[str, Any],
-    *,
-    user_text: str,
-    followup_question: str,
-) -> None:
-    current = session.get_session(user_data)
-    conversation = current.get("conversation", []) if current else []
-    failure_recorder.record_repeated_question_failure(
-        user_text=user_text,
-        followup_question=followup_question,
-        conversation=conversation,
-        conversation_id=_conversation_id(user_data),
-    )
-
-
-def _maybe_record_korean_misparse(
-    user_data: dict[str, Any],
-    *,
-    user_text: str,
-    draft: dict[str, Any],
-    assistant_output: str,
-) -> None:
-    current = session.get_session(user_data)
-    conversation = current.get("conversation", []) if current else []
-    failure_recorder.record_korean_misparse_failure(
-        user_text=user_text,
-        assistant_output=assistant_output,
-        conversation=conversation,
-        draft=draft,
-        conversation_id=_conversation_id(user_data),
-    )
-
-
 def _review_message(draft: dict[str, Any]) -> str:
     return memory_service.format_review_message(draft)
-
-
-def _maybe_reflection_followup_or_review(
-    user_id: str,
-    user_data: dict[str, Any],
-    draft: dict[str, Any],
-) -> ChatTurnResult:
-    qsession = session.ensure_question_session(user_data)
-    if qsession["questions_asked"] >= question_service.get_max_questions():
-        return ChatTurnResult(messages=[_review_message(draft)], state=states.REVIEW)
-
-    current = session.ensure_session(user_data)
-    result = question_service.generate_question(
-        user_texts=current["user_texts"],
-        conversation=current["conversation"],
-        draft=draft,
-        question_session=qsession,
-        recent_context=session.get_recent_context(user_data),
-    )
-    draft = question_service.merge_question_into_draft(draft, result)
-    session.set_draft(user_data, draft)
-
-    if result.get("needs_followup") and result.get("followup_question"):
-        latest_user = current["user_texts"][-1] if current.get("user_texts") else ""
-        _maybe_record_followup_violation(
-            user_data,
-            user_text=latest_user,
-            followup_question=result["followup_question"],
-        )
-        session.record_question(user_data, draft, result)
-        current["conversation"].append(
-            {"role": "assistant", "content": result["followup_question"]}
-        )
-        db.save_active_draft(
-            user_id,
-            user_texts=current["user_texts"],
-            conversation=current["conversation"],
-            draft=draft,
-        )
-        return ChatTurnResult(
-            messages=[result["followup_question"]],
-            state=states.FOLLOWUP,
-        )
-
-    return ChatTurnResult(messages=[_review_message(draft)], state=states.REVIEW)
 
 
 def _maybe_followup_or_review(
@@ -234,26 +107,13 @@ def _maybe_followup_or_review(
     user_data: dict[str, Any],
     draft: dict[str, Any],
 ) -> ChatTurnResult:
-    if question_service.is_reflection_agent_enabled():
-        return _maybe_reflection_followup_or_review(user_id, user_data, draft)
-
-    followup_asked = user_data.get(session.KEY_FOLLOWUP_ASKED, False)
-    needs_followup = draft.get("needs_followup") and draft.get("followup_question")
-
-    if needs_followup and not followup_asked:
-        question = draft["followup_question"]
-        current = session.ensure_session(user_data)
-        latest_user = current["user_texts"][-1] if current.get("user_texts") else ""
-        _maybe_record_followup_violation(
-            user_data,
-            user_text=latest_user,
-            followup_question=question,
-        )
-        current["conversation"].append({"role": "assistant", "content": question})
-        user_data[session.KEY_FOLLOWUP_ASKED] = True
-        return ChatTurnResult(messages=[question], state=states.FOLLOWUP)
-
-    return ChatTurnResult(messages=[_review_message(draft)], state=states.REVIEW)
+    result = question_flow.maybe_followup_or_review(
+        user_id,
+        user_data,
+        draft,
+        review_message=_review_message,
+    )
+    return ChatTurnResult(messages=result.messages, state=result.state)
 
 
 def handle_start(user_data: dict[str, Any]) -> ChatTurnResult:
@@ -388,7 +248,7 @@ def handle_recording(
             cancellation_reason=user_data.get(session.KEY_CANCELLATION_REASON, ""),
         )
         session.set_draft(user_data, draft)
-        _maybe_record_korean_misparse(
+        failure_hooks.record_korean_misparse(
             user_data,
             user_text="\n".join(current["user_texts"]),
             draft=draft,
@@ -414,8 +274,8 @@ def handle_followup(
     user_data: dict[str, Any],
     text: str,
 ) -> ChatTurnResult:
-    _maybe_record_question_rejection_failure(user_data, text)
-    _maybe_prepare_correction_failure(user_data, text)
+    failure_hooks.maybe_record_question_rejection_failure(user_data, text)
+    failure_hooks.maybe_prepare_correction_failure(user_data, text)
     current = session.ensure_session(user_data)
     current["user_texts"].append(text)
     current["conversation"].append({"role": "user", "content": text})
@@ -428,7 +288,7 @@ def handle_followup(
             followup_already_asked=True,
         )
         session.set_draft(user_data, draft)
-        _finalize_pending_failure(user_data, draft)
+        failure_hooks.finalize_pending_failure(user_data, _review_message(draft))
         db.save_active_draft(
             user_id,
             user_texts=current["user_texts"],
@@ -436,7 +296,7 @@ def handle_followup(
             draft=draft,
         )
         if question_service.is_reflection_agent_enabled():
-            return _maybe_reflection_followup_or_review(user_id, user_data, draft)
+            return _maybe_followup_or_review(user_id, user_data, draft)
         return ChatTurnResult(messages=[_review_message(draft)], state=states.REVIEW)
     except Exception as e:
         logger.exception("후속 답변 처리 오류")
@@ -488,7 +348,7 @@ def _apply_edit(
     user_data: dict[str, Any],
     edit_instruction: str,
 ) -> ChatTurnResult:
-    _maybe_prepare_correction_failure(user_data, edit_instruction)
+    failure_hooks.maybe_prepare_correction_failure(user_data, edit_instruction)
     current = session.get_session(user_data)
     draft = session.get_draft(user_data)
 
@@ -512,7 +372,7 @@ def _apply_edit(
             followup_already_asked=True,
         )
         session.set_draft(user_data, revised)
-        _finalize_pending_failure(user_data, revised)
+        failure_hooks.finalize_pending_failure(user_data, _review_message(revised))
         return ChatTurnResult(messages=[_review_message(revised)], state=states.REVIEW)
     except Exception as e:
         logger.exception("수정 처리 오류")
@@ -521,7 +381,6 @@ def _apply_edit(
 
 def _save_draft(user_id: str, user_data: dict[str, Any]) -> ChatTurnResult:
     pending = session.get_draft(user_data)
-    current = session.get_session(user_data)
 
     if not pending:
         return ChatTurnResult(
@@ -529,42 +388,18 @@ def _save_draft(user_id: str, user_data: dict[str, Any]) -> ChatTurnResult:
             state=IDLE,
         )
 
-    full_memory = {
-        **pending,
-        "conversation": current.get("conversation", []) if current else [],
-        "approved": True,
-    }
-
-    try:
-        filepath = storage.save(full_memory, telegram_user_id=user_id)
-        draft_id = user_data.get(session.KEY_PERSISTED_DRAFT_ID)
-        draft_status_warning = ""
-        try:
-            db.mark_draft_saved(
-                draft_id,
-                user_id,
-                draft=pending,
-                user_texts=current.get("user_texts", []) if current else [],
-                conversation=current.get("conversation", []) if current else [],
-            )
-        except Exception:
-            logger.exception("최종 기억 저장 후 초안 상태 업데이트 실패")
-            draft_status_warning = (
-                "\n\n최종 기억은 저장되었지만 임시 초안 상태 업데이트에 실패했습니다. "
-                "같은 초안이 다시 보이면 새 기록으로 시작해주세요."
-            )
-        session.reset_all(user_data)
+    result = save_service.save_current_draft(user_id, user_data)
+    if result.saved:
         return ChatTurnResult(
             messages=[
-                f"✅ 기억이 저장되었습니다.\n\n파일: `{filepath}`{draft_status_warning}\n\n"
+                f"✅ 기억이 저장되었습니다.\n\n파일: `{result.storage_ref}`"
+                f"{result.draft_status_warning}\n\n"
                 f"다시 기록하려면 「{BEGIN_KEYWORD}」을 입력하세요."
             ],
             state=IDLE,
             parse_mode="Markdown",
         )
-    except Exception as e:
-        logger.exception("저장 오류")
-        return ChatTurnResult(messages=[f"저장 실패: {e}"], state=states.REVIEW)
+    return ChatTurnResult(messages=[f"저장 실패: {result.error}"], state=states.REVIEW)
 
 
 def handle_edit_cancelled_draft(user_id: str, user_data: dict[str, Any]) -> ChatTurnResult:

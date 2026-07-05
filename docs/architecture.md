@@ -120,7 +120,7 @@ conversation_to_memory/
     └── memory_archive_system_prompt.txt
 ```
 
-`interviewer_system_prompt.txt`와 `memory_extraction_prompt.txt`는 초기 다문항 인터뷰 방식의 레거시 파일이며 현재 흐름에서는 사용하지 않습니다.
+`prompts/legacy/interviewer_system_prompt.txt`와 `prompts/legacy/memory_extraction_prompt.txt`는 초기 다문항 인터뷰 방식의 레거시 파일이며 현재 흐름에서는 사용하지 않습니다.
 
 ## OpenAI 호출
 

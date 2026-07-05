@@ -186,7 +186,7 @@ def test_interactive_review_y_saves(tmp_path):
             side_effect=_draft_copy,
         ):
             with patch(
-                "conversation_to_memory.bot.chat_service.storage.save",
+                "conversation_to_memory.bot.save_service.archive_storage.save",
                 side_effect=fake_save,
             ):
                 result = replay.run_replay(
@@ -216,7 +216,7 @@ def test_interactive_review_n_skips(tmp_path):
             "conversation_to_memory.bot.chat_service.memory_service.analyze_recording",
             side_effect=_draft_copy,
         ):
-            with patch("conversation_to_memory.bot.chat_service.storage.save") as save_mock:
+            with patch("conversation_to_memory.bot.save_service.archive_storage.save") as save_mock:
                 result = replay.run_replay(
                     source,
                     mode="interactive-review",
@@ -243,7 +243,7 @@ def test_interactive_review_e_aborts_remaining_blocks(tmp_path):
             "conversation_to_memory.bot.chat_service.memory_service.analyze_recording",
             side_effect=_draft_copy,
         ):
-            with patch("conversation_to_memory.bot.chat_service.storage.save") as save_mock:
+            with patch("conversation_to_memory.bot.save_service.archive_storage.save") as save_mock:
                 result = replay.run_replay(
                     source,
                     mode="interactive-review",
@@ -275,7 +275,7 @@ def test_save_final_adds_transcript_replay_metadata(tmp_path):
             "conversation_to_memory.bot.chat_service.memory_service.analyze_recording",
             side_effect=_draft_copy,
         ):
-            with patch("conversation_to_memory.bot.chat_service.storage.save", side_effect=fake_save):
+            with patch("conversation_to_memory.bot.save_service.archive_storage.save", side_effect=fake_save):
                 result = replay.run_replay(source, mode="save-final", memories_dir=tmp_path / "memories")
 
     assert result.results[0].saved is True
@@ -302,7 +302,7 @@ def test_duplicate_replay_hash_is_skipped_by_default(tmp_path):
     )
 
     with patch("conversation_to_memory.replay.db.DEFAULT_DB_PATH", db_path):
-        with patch("conversation_to_memory.bot.chat_service.storage.save") as save_mock:
+        with patch("conversation_to_memory.bot.save_service.archive_storage.save") as save_mock:
             result = replay.run_replay(source, mode="save-final", memories_dir=memories_dir)
 
     assert result.results[0].skipped is True
@@ -329,7 +329,7 @@ def test_force_allows_duplicate_final_save(tmp_path):
             side_effect=_draft_copy,
         ):
             with patch(
-                "conversation_to_memory.bot.chat_service.storage.save",
+                "conversation_to_memory.bot.save_service.archive_storage.save",
                 return_value=str(tmp_path / "saved.json"),
             ) as save_mock:
                 result = replay.run_replay(

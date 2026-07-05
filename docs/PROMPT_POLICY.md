@@ -93,5 +93,5 @@ GPT에게 부여하는 역할:
 
 ## 레거시 프롬프트
 
-- `interviewer_system_prompt.txt` — **사용 중단** (3~5개 인터뷰 흐름)
-- `memory_extraction_prompt.txt` — **사용 중단** (`memory_archive_system_prompt.txt`로 대체)
+- `legacy/interviewer_system_prompt.txt` — **사용 중단** (3~5개 인터뷰 흐름)
+- `legacy/memory_extraction_prompt.txt` — **사용 중단** (`memory_archive_system_prompt.txt`로 대체)

@@ -111,7 +111,7 @@ class TestDevChatFlow:
 
         with patch("conversation_to_memory.bot.chat_service.db.DEFAULT_DB_PATH", temp_db):
             with patch(
-                "conversation_to_memory.bot.chat_service.storage.save",
+                "conversation_to_memory.bot.save_service.archive_storage.save",
                 return_value=str(tmp_path / "saved.json"),
             ):
                 result = chat_service.handle_review(user_id, user_data, "저장")
@@ -127,7 +127,7 @@ class TestDevChatFlow:
         session.set_draft(user_data, SAMPLE_DRAFT)
 
         with patch(
-            "conversation_to_memory.bot.chat_service.storage.save",
+            "conversation_to_memory.bot.save_service.archive_storage.save",
             return_value=str(tmp_path / "saved.json"),
         ):
             with patch(
@@ -148,7 +148,7 @@ class TestDevChatFlow:
         session.set_draft(user_data, SAMPLE_DRAFT)
 
         with patch(
-            "conversation_to_memory.bot.chat_service.storage.save",
+            "conversation_to_memory.bot.save_service.archive_storage.save",
             side_effect=RuntimeError("memory backend down"),
         ):
             with patch(

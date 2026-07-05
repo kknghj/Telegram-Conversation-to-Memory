@@ -264,7 +264,7 @@ def can_use_meaning_check(session: QuestionSession) -> bool:
 ## 8. Safety Rules (해석·질문 안전 규칙)
 
 질문 생성과 해석 알고리즘의 공통 안전 장치.  
-프롬프트(`question_generation_prompt.txt`, `memory_extraction_prompt.txt`)와 코드(`question.py`, `fidelity.py`) 모두에 반영한다.
+프롬프트(`question_generation_prompt.txt`, 레거시 참고용 `legacy/memory_extraction_prompt.txt`)와 코드(`question.py`, `fidelity.py`) 모두에 반영한다.
 
 ### Rule 1. 기억 불가·정보 없음은 추가 질문 금지
 
