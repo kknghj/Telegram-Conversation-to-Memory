@@ -141,6 +141,26 @@ class TestDevChatFlow:
         assert "임시 초안 상태 업데이트에 실패" in result.messages[0]
         assert session.get_draft(user_data) is None
 
+    def test_save_draft_failure_keeps_review_state_and_draft(self):
+        user_id = "dev-user"
+        user_data = {}
+        session.ensure_session(user_data)
+        session.set_draft(user_data, SAMPLE_DRAFT)
+
+        with patch(
+            "conversation_to_memory.bot.chat_service.storage.save",
+            side_effect=RuntimeError("memory backend down"),
+        ):
+            with patch(
+                "conversation_to_memory.bot.chat_service.db.mark_draft_saved"
+            ) as mark_saved:
+                result = chat_service.handle_review(user_id, user_data, "저장")
+
+        assert result.state == states.REVIEW
+        assert "저장 실패: memory backend down" in result.messages[0]
+        mark_saved.assert_not_called()
+        assert session.get_draft(user_data) == SAMPLE_DRAFT
+
     def test_resume_choice_after_recent_cancel(self, temp_db):
         user_id = "dev-user"
         user_data = {}
