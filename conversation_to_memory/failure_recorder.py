@@ -73,6 +73,7 @@ FAILURE_TYPES = frozenset(
         "correction_ignored",
         "memory_unavailable_ignored",
         "inappropriate_positive_reframe",
+        "value_hidden_by_event",
     }
 )
 
@@ -82,6 +83,7 @@ RULE_BY_FAILURE_TYPE: dict[str, str] = {
     "correction_ignored": "Rule 3",
     "memory_unavailable_ignored": "Rule 1",
     "inappropriate_positive_reframe": "Rule 5",
+    "value_hidden_by_event": "Rule 6",
 }
 
 DEFAULT_EXPECTED_BEHAVIOR: dict[str, str] = {
@@ -93,6 +95,10 @@ DEFAULT_EXPECTED_BEHAVIOR: dict[str, str] = {
         "사용자가 걱정과 자기비판을 표현한 뒤 요약을 요청했으므로, "
         "긍정 회상 질문을 하지 말고 원문 기반으로 바로 요약했어야 함."
     ),
+    "value_hidden_by_event": (
+        "가치관·판단 기준이 핵심이었으므로, 사건 나열보다 가치관을 event_summary 중심에 두고 "
+        "memory_type=reflection_seed로 저장했어야 함."
+    ),
 }
 
 DEFAULT_ROOT_CAUSE: dict[str, str] = {
@@ -103,6 +109,7 @@ DEFAULT_ROOT_CAUSE: dict[str, str] = {
     "inappropriate_positive_reframe": (
         "부정 감정 표현 직후 반대 감정과 즐거운 순간을 묻는 긍정 전환 질문을 생성함"
     ),
+    "value_hidden_by_event": "가치관이 핵심이었는데 사건 요약 위주로 저장됨",
 }
 
 
@@ -462,6 +469,47 @@ def record_inappropriate_positive_reframe_failure(
         root_cause=DEFAULT_ROOT_CAUSE["inappropriate_positive_reframe"],
         fixed_rule=RULE_BY_FAILURE_TYPE["inappropriate_positive_reframe"],
         severity="high",
+        conversation_id=conversation_id,
+        message_index=_message_index(conversation),
+        log_path=log_path,
+    )
+    if notes:
+        record["notes"] = notes
+    return record
+
+
+def record_value_hidden_by_event_failure(
+    *,
+    user_text: str,
+    draft: dict[str, Any],
+    conversation: list[dict[str, str]] | None = None,
+    user_correction: str = "",
+    conversation_id: str = "",
+    severity: str = "medium",
+    log_path: Path | None = None,
+    notes: str = "",
+) -> dict[str, Any] | None:
+    """가치관이 핵심인데 사건 위주로 저장된 경우 기록.
+
+    fidelity.draft_hides_value로 판단한다.
+    """
+    from conversation_to_memory.memory.fidelity import draft_hides_value
+
+    if not draft_hides_value(draft, user_text):
+        return None
+
+    context = build_failure_context(conversation, draft=draft, window=8)
+    assistant_output = str(draft.get("event_summary") or "").strip()
+
+    record = record_interpretation_failure(
+        failure_type="value_hidden_by_event",
+        context=context,
+        user_correction=user_correction,
+        assistant_output=assistant_output,
+        expected_behavior=DEFAULT_EXPECTED_BEHAVIOR["value_hidden_by_event"],
+        root_cause=DEFAULT_ROOT_CAUSE["value_hidden_by_event"],
+        fixed_rule=RULE_BY_FAILURE_TYPE["value_hidden_by_event"],
+        severity=severity,
         conversation_id=conversation_id,
         message_index=_message_index(conversation),
         log_path=log_path,

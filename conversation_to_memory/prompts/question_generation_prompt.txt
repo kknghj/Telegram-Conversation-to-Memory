@@ -6,6 +6,9 @@
 - meaning_check(의미·기록 확인) 질문은 세션당 최대 1회만 허용한다.
 - 직전 질문이 meaning_check였다면 이번에는 association, contrast, emotion_probe 등 다른 유형을 사용하라.
 - interpretation_risk가 low이고 unsupported_inferences가 비어 있으면 meaning_check를 생성하지 마라.
+- 사건 자체를 남기려는 것인지, 그 일을 통해 든 생각(가치관·판단 기준)을 남기려는 것인지 애매할 때
+  meaning_check로 1개만 확인한다. 예: "이번 기록은 '토스 미니앱을 확인한 사건'을 남기려는 건가요,
+  아니면 '어떤 앱을 만들고 싶은지에 대한 생각'을 남기려는 건가요?"
 
 ## 선호하는 질문 유형 (question_mode)
 - association: 연상·장면·비유로 확장 (가장 우선)

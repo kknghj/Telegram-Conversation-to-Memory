@@ -77,6 +77,54 @@ def test_normalize_draft_default_fields():
     assert draft["model_interpretation"] == ""
     assert draft["memory_type"] == "event"
     assert draft["reflection_value"] == "medium"
+    assert draft["value_tags"] == []
+    assert draft["reflection_seed_candidate"] is False
+    assert draft["temporal_status"] == "past"
+
+
+def test_normalize_draft_new_fields_coerced():
+    draft = normalize_draft(
+        {
+            "value_tags": ["다크패턴 거부", "편의성"],
+            "reflection_seed_candidate": "yes",
+            "temporal_status": "future",
+            "memory_type": "reflection_seed",
+        }
+    )
+    assert draft["value_tags"] == ["다크패턴 거부", "편의성"]
+    assert draft["reflection_seed_candidate"] is True
+    assert draft["temporal_status"] == "future"
+    assert draft["memory_type"] == "reflection_seed"
+
+
+def test_normalize_draft_invalid_temporal_status_falls_back():
+    draft = normalize_draft({"temporal_status": "someday"})
+    assert draft["temporal_status"] == "past"
+
+
+def test_format_review_message_shows_future_and_seed_notes():
+    from conversation_to_memory.memory.service import format_review_message
+
+    text = format_review_message(
+        {
+            "event_summary": "요약",
+            "topic": "t",
+            "user_emotions": [],
+            "emotion_evidence": [],
+            "people": [],
+            "projects": ["GPTERS"],
+            "tags": [],
+            "value_tags": ["다크패턴 거부"],
+            "memory_candidate": "본문",
+            "interpretation_risk": "low",
+            "unsupported_inferences": [],
+            "reflection_seed_candidate": True,
+            "temporal_status": "mixed",
+        }
+    )
+    assert "시제" in text
+    assert "장기 패턴" in text
+    assert "다크패턴 거부" in text
 
 
 def test_format_review_message_shows_model_interpretation():

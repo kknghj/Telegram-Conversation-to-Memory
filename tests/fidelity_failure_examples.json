@@ -14,5 +14,13 @@
     "failure_type": "unsupported_positive_reframing",
     "correct_interpretation": "팀장이 딴지를 걸지 않아서 일이 생각보다 잘 풀렸다.",
     "principle": "방해하지 않음을 지원·배려·도움으로 재해석하지 말고, 원문의 '딴지를 안 건다'를 그대로 기록한다."
+  },
+  {
+    "id": "toss_miniapp_value_hidden",
+    "user_text": "난 사람들의 일을 줄이고 편의성을 주는 것을 만들고 싶은데 게임앱이나 인스타언팔앱은 결국 사용자의 시간과 마음을 낭비한다는 생각이 들었어.",
+    "incorrect_interpretation": "토스 미니앱을 확인하고 다른 강의로 수강 변경했다.",
+    "failure_type": "value_hidden_by_event",
+    "correct_interpretation": "사용자는 사람들의 일을 줄이고 편의성을 주는 것을 만들고 싶어하며, 그 기준으로 다크패턴·불안 마케팅을 거부한다. 시간과 마음을 낭비하는 앱은 원하는 방향이 아니라고 판단했다.",
+    "principle": "판단 기준·가치관이 사건 서술보다 더 큰 비중을 차지하면 사건 나열 대신 가치관을 event_summary 중심에 두고 reflection_seed로 저장한다."
   }
 ]

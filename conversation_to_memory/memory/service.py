@@ -26,6 +26,7 @@ DEFAULT_DRAFT: dict[str, Any] = {
     "people": [],
     "projects": [],
     "tags": [],
+    "value_tags": [],
     "memory_candidate": "",
     "model_interpretation": "",
     "key_phrases": [],
@@ -33,12 +34,16 @@ DEFAULT_DRAFT: dict[str, Any] = {
     "open_questions": [],
     "reflection_value": "medium",
     "memory_type": "event",
+    "reflection_seed_candidate": False,
+    "temporal_status": "past",
     "question_mode_used": [],
     "interpretation_risk": "low",
     "unsupported_inferences": [],
     "needs_followup": False,
     "followup_question": "",
 }
+
+VALID_TEMPORAL_STATUS = frozenset({"past", "future", "ongoing", "mixed"})
 
 
 def _load_prompt(filename: str) -> str:
@@ -97,6 +102,7 @@ def normalize_draft(data: dict) -> dict:
     draft["people"] = list(draft.get("people") or [])
     draft["projects"] = list(draft.get("projects") or [])
     draft["tags"] = list(draft.get("tags") or [])
+    draft["value_tags"] = list(draft.get("value_tags") or [])
     draft["key_phrases"] = list(draft.get("key_phrases") or [])
     draft["emerging_themes"] = list(draft.get("emerging_themes") or [])
     draft["open_questions"] = list(draft.get("open_questions") or [])
@@ -113,6 +119,13 @@ def normalize_draft(data: dict) -> dict:
     if memory_type not in VALID_MEMORY_TYPES:
         memory_type = "event"
     draft["memory_type"] = memory_type
+
+    draft["reflection_seed_candidate"] = bool(draft.get("reflection_seed_candidate"))
+
+    temporal_status = draft.get("temporal_status", "past")
+    if temporal_status not in VALID_TEMPORAL_STATUS:
+        temporal_status = "past"
+    draft["temporal_status"] = temporal_status
 
     draft["needs_followup"] = bool(draft.get("needs_followup"))
     risk = draft.get("interpretation_risk", "low")
@@ -205,12 +218,15 @@ def format_review_message(memory: dict) -> str:
         "people": memory.get("people"),
         "projects": memory.get("projects"),
         "tags": memory.get("tags"),
+        "value_tags": memory.get("value_tags"),
         "memory_candidate": memory.get("memory_candidate"),
         "key_phrases": memory.get("key_phrases"),
         "emerging_themes": memory.get("emerging_themes"),
         "open_questions": memory.get("open_questions"),
         "reflection_value": memory.get("reflection_value"),
         "memory_type": memory.get("memory_type"),
+        "reflection_seed_candidate": memory.get("reflection_seed_candidate"),
+        "temporal_status": memory.get("temporal_status"),
         "interpretation_risk": memory.get("interpretation_risk"),
         "unsupported_inferences": memory.get("unsupported_inferences"),
     }
@@ -220,6 +236,18 @@ def format_review_message(memory: dict) -> str:
     risk_note = ""
     if risk != "low":
         risk_note = f"\n⚠️ 해석 위험도: {risk}\n"
+
+    temporal_status = memory.get("temporal_status", "past")
+    temporal_note = ""
+    if temporal_status in ("future", "mixed"):
+        temporal_note = (
+            f"\n🕒 시제: {temporal_status} — 아직 일어나지 않은/예정된 내용이 포함되어 있습니다. "
+            "완료된 사실로 기록하지 않았는지 확인하세요.\n"
+        )
+
+    seed_note = ""
+    if memory.get("reflection_seed_candidate"):
+        seed_note = "\n🌱 장기 패턴(가치관·판단 기준) 후보로 표시되었습니다.\n"
 
     unsupported = memory.get("unsupported_inferences") or []
     unsupported_note = ""
@@ -236,7 +264,7 @@ def format_review_message(memory: dict) -> str:
     return (
         "📋 기록 요약\n"
         f"{memory.get('event_summary', '')}\n"
-        f"{risk_note}{unsupported_note}{interpretation_note}\n"
+        f"{risk_note}{temporal_note}{seed_note}{unsupported_note}{interpretation_note}\n"
         "📦 구조화 JSON\n"
         f"{json_str}\n\n"
         "저장하려면 「저장」을 입력하세요.\n"
