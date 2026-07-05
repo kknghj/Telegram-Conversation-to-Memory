@@ -9,6 +9,7 @@ Telegram Conversation to Memory Bot을 Render Background Worker로 운영할 때
 - [ ] OpenAI API Key 준비
 - [ ] Supabase 프로젝트 생성
 - [ ] `supabase/migrations/005_create_memories.sql` 실행
+- [ ] `supabase/migrations/007_create_drafts.sql` 실행
 - [ ] (Migration 사용 시) `supabase/migrations/006_add_migration_tracking_columns.sql` 실행
 
 ## Render Worker 생성
@@ -37,9 +38,11 @@ Render Dashboard → Service → **Environment** 에서 설정:
 | `TELEGRAM_BOT_TOKEN` | BotFather 토큰 | Secret |
 | `OPENAI_API_KEY` | OpenAI 키 | Secret |
 | `STORAGE_BACKEND` | `supabase` | 운영 권장 |
+| `DRAFT_STORAGE_BACKEND` | `supabase` | Render 재시작 후 초안 복구를 위해 권장 |
 | `SUPABASE_URL` | `https://xxx.supabase.co` | Secret |
 | `SUPABASE_SECRET_KEY` | service role / secret key | Secret, 프론트에 노출 금지 |
 | `SUPABASE_MEMORIES_TABLE` | `memories` | 선택 |
+| `SUPABASE_DRAFTS_TABLE` | `drafts` | 선택 |
 | `OPENAI_MODEL` | `gpt-4o-mini` | 선택 |
 | `TELEGRAM_OFFLINE_MODE` | `false` | 운영에서 dev 모드 금지 |
 
@@ -58,8 +61,10 @@ Logs 탭에서 아래 순서 확인:
 ```text
 Memory Archive Bot 시작
 Storage Backend: supabase
+Draft Storage Backend: supabase
 OpenAI Model: gpt-4o-mini
 Supabase 연결 성공 (table=memories)
+Supabase drafts 연결 성공 (table=drafts)
 Draft cleanup: ...
 Telegram Bot 연결 성공 (@..., id=...)
 Telegram Polling 시작 (stop_signals=['SIGINT', 'SIGTERM'])
@@ -73,6 +78,7 @@ Telegram Polling 시작 (stop_signals=['SIGINT', 'SIGTERM'])
 | `필수 환경변수 누락: OPENAI_API_KEY` | OpenAI key 추가 |
 | `STORAGE_BACKEND=supabase이지만 ... SUPABASE_URL` | Supabase env 추가 |
 | `Supabase 연결 실패` | URL/key, migration, 테이블명 확인 |
+| `Supabase drafts 연결 실패` | `007_create_drafts.sql`, URL/key, `SUPABASE_DRAFTS_TABLE` 확인 |
 | `Telegram Bot 연결 실패` | Token 오타, Bot 비활성화 여부 확인 |
 
 ## Telegram 테스트
@@ -95,6 +101,6 @@ Telegram Polling 시작 (stop_signals=['SIGINT', 'SIGTERM'])
 
 ## 알려진 운영 제약
 
-- Worker 로컬 디스크는 휘발성입니다. SQLite 초안(`data/memory_archive.db`)은 재시작 시 유실될 수 있습니다.
+- Worker 로컬 디스크는 휘발성입니다. `DRAFT_STORAGE_BACKEND=supabase`를 사용해야 진행·취소 초안의 30일 보관 정책이 재시작 후에도 유지됩니다.
 - 승인된 최종 기억은 `STORAGE_BACKEND=supabase`일 때 Supabase에 영구 보관됩니다.
 - 동일 Bot Token으로 로컬과 Render를 동시에 polling하면 충돌합니다. 운영 배포 후 로컬 `python main.py`는 중지하세요.

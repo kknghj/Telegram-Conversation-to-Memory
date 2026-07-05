@@ -8,6 +8,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from app.draft_storage import (
+    DRAFT_STORAGE_BACKEND_SUPABASE,
+    SupabaseDraftStore,
+    get_draft_storage_backend_name,
+)
+
 DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "memory_archive.db"
 
 DRAFT_STATUS_ACTIVE = "active"
@@ -17,6 +23,14 @@ DRAFT_STATUS_SAVED = "saved"
 CANCELLED_RETENTION_DAYS = 30
 ACTIVE_ABANDONED_DAYS = 7
 RECENT_CANCELLED_HOURS = 24
+
+
+def _use_supabase_drafts(db_path: Path | str | None = None) -> bool:
+    return db_path is None and get_draft_storage_backend_name() == DRAFT_STORAGE_BACKEND_SUPABASE
+
+
+def _draft_store() -> SupabaseDraftStore:
+    return SupabaseDraftStore()
 
 
 def _resolve_db_path(db_path: Path | str | None) -> Path:
@@ -33,6 +47,9 @@ def _connect(db_path: Path | str | None = None) -> sqlite3.Connection:
 
 def init_db(db_path: Path | str | None = None) -> None:
     """Create tables if they do not exist."""
+    if _use_supabase_drafts(db_path):
+        return
+
     with _connect(db_path) as conn:
         conn.executescript(
             """
@@ -101,6 +118,15 @@ def save_cancelled_draft(
     db_path: Path | str | None = None,
 ) -> int:
     """Persist a cancelled draft. Returns the new row id."""
+    if _use_supabase_drafts(db_path):
+        return _draft_store().save_cancelled_draft(
+            user_id,
+            draft=draft,
+            user_texts=user_texts,
+            conversation=conversation,
+            cancellation_reason=cancellation_reason,
+        )
+
     raw_text = json.dumps(
         {"user_texts": user_texts, "conversation": conversation or []},
         ensure_ascii=False,
@@ -125,6 +151,9 @@ def get_latest_cancelled_draft(
     db_path: Path | str | None = None,
 ) -> dict[str, Any] | None:
     """Return the most recent cancelled draft for a user."""
+    if _use_supabase_drafts(db_path):
+        return _draft_store().get_latest_cancelled_draft(user_id)
+
     with _connect(db_path) as conn:
         row = conn.execute(
             """
@@ -147,6 +176,12 @@ def has_recent_cancelled_draft(
     db_path: Path | str | None = None,
 ) -> bool:
     """True if a cancelled draft exists within the given hour window."""
+    if _use_supabase_drafts(db_path):
+        return _draft_store().has_recent_cancelled_draft(
+            user_id,
+            within_hours=within_hours,
+        )
+
     cutoff = (
         datetime.now(timezone.utc) - timedelta(hours=within_hours)
     ).strftime("%Y-%m-%d %H:%M:%S")
@@ -175,6 +210,14 @@ def save_active_draft(
     db_path: Path | str | None = None,
 ) -> int:
     """Create or update the user's active draft."""
+    if _use_supabase_drafts(db_path):
+        return _draft_store().save_active_draft(
+            user_id,
+            user_texts=user_texts,
+            conversation=conversation,
+            draft=draft,
+        )
+
     raw_text = json.dumps(
         {"user_texts": user_texts, "conversation": conversation or []},
         ensure_ascii=False,
@@ -217,7 +260,7 @@ def save_active_draft(
 
 
 def mark_draft_saved(
-    draft_id: int | None,
+    draft_id: Any | None,
     user_id: str,
     *,
     draft: dict[str, Any],
@@ -226,6 +269,15 @@ def mark_draft_saved(
     db_path: Path | str | None = None,
 ) -> int:
     """Mark an existing draft as saved, or insert a new saved row."""
+    if _use_supabase_drafts(db_path):
+        return _draft_store().mark_draft_saved(
+            str(draft_id) if draft_id is not None else None,
+            user_id,
+            draft=draft,
+            user_texts=user_texts,
+            conversation=conversation,
+        )
+
     raw_text = json.dumps(
         {"user_texts": user_texts, "conversation": conversation or []},
         ensure_ascii=False,
@@ -264,6 +316,12 @@ def cleanup_drafts(db_path: Path | str | None = None) -> dict[str, int]:
     - active abandoned 7+ days → convert to cancelled
     - saved → never deleted
     """
+    if _use_supabase_drafts(db_path):
+        return _draft_store().cleanup_drafts(
+            cancelled_days=CANCELLED_RETENTION_DAYS,
+            active_days=ACTIVE_ABANDONED_DAYS,
+        )
+
     now = datetime.now(timezone.utc)
     cancelled_cutoff = (now - timedelta(days=CANCELLED_RETENTION_DAYS)).strftime(
         "%Y-%m-%d %H:%M:%S"

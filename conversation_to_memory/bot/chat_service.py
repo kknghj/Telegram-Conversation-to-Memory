@@ -538,17 +538,25 @@ def _save_draft(user_id: str, user_data: dict[str, Any]) -> ChatTurnResult:
     try:
         filepath = storage.save(full_memory, telegram_user_id=user_id)
         draft_id = user_data.get(session.KEY_PERSISTED_DRAFT_ID)
-        db.mark_draft_saved(
-            draft_id,
-            user_id,
-            draft=pending,
-            user_texts=current.get("user_texts", []) if current else [],
-            conversation=current.get("conversation", []) if current else [],
-        )
+        draft_status_warning = ""
+        try:
+            db.mark_draft_saved(
+                draft_id,
+                user_id,
+                draft=pending,
+                user_texts=current.get("user_texts", []) if current else [],
+                conversation=current.get("conversation", []) if current else [],
+            )
+        except Exception:
+            logger.exception("최종 기억 저장 후 초안 상태 업데이트 실패")
+            draft_status_warning = (
+                "\n\n최종 기억은 저장되었지만 임시 초안 상태 업데이트에 실패했습니다. "
+                "같은 초안이 다시 보이면 새 기록으로 시작해주세요."
+            )
         session.reset_all(user_data)
         return ChatTurnResult(
             messages=[
-                f"✅ 기억이 저장되었습니다.\n\n파일: `{filepath}`\n\n"
+                f"✅ 기억이 저장되었습니다.\n\n파일: `{filepath}`{draft_status_warning}\n\n"
                 f"다시 기록하려면 「{BEGIN_KEYWORD}」을 입력하세요."
             ],
             state=IDLE,

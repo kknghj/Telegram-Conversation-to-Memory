@@ -120,6 +120,27 @@ class TestDevChatFlow:
         assert "기억이 저장되었습니다" in result.messages[0]
         assert session.get_draft(user_data) is None
 
+    def test_save_draft_reports_saved_when_draft_mark_fails(self, tmp_path):
+        user_id = "dev-user"
+        user_data = {}
+        session.ensure_session(user_data)
+        session.set_draft(user_data, SAMPLE_DRAFT)
+
+        with patch(
+            "conversation_to_memory.bot.chat_service.storage.save",
+            return_value=str(tmp_path / "saved.json"),
+        ):
+            with patch(
+                "conversation_to_memory.bot.chat_service.db.mark_draft_saved",
+                side_effect=RuntimeError("draft backend down"),
+            ):
+                result = chat_service.handle_review(user_id, user_data, "저장")
+
+        assert result.state == chat_service.IDLE
+        assert "기억이 저장되었습니다" in result.messages[0]
+        assert "임시 초안 상태 업데이트에 실패" in result.messages[0]
+        assert session.get_draft(user_data) is None
+
     def test_resume_choice_after_recent_cancel(self, temp_db):
         user_id = "dev-user"
         user_data = {}

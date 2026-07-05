@@ -16,12 +16,16 @@ services:
         value: "3.12.8"
       - key: STORAGE_BACKEND
         value: supabase
+      - key: DRAFT_STORAGE_BACKEND
+        value: supabase
       - key: OPENAI_MODEL
         value: gpt-4o-mini
       - key: TELEGRAM_OFFLINE_MODE
         value: "false"
       - key: SUPABASE_MEMORIES_TABLE
         value: memories
+      - key: SUPABASE_DRAFTS_TABLE
+        value: drafts
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: OPENAI_API_KEY
