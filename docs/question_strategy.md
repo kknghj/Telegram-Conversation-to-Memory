@@ -463,3 +463,105 @@ conditions:
 | "그런건 묻지마" | 직전 봇 질문을 failure snapshot으로 저장 |
 
 구현 시 `tests/test_question_generation.py`, `tests/test_question_safety_rules.py`에 위 케이스를 추가한다.
+
+---
+
+## 9. Memory Extraction & Correction Rules (메모 추출·수정 규칙)
+
+질문 생성(Section 8)과 별도로, 메모 추출·수정 단계(`memory_archive_system_prompt.txt`, `fidelity.py`)에 적용한다.
+
+### Rule 7. 수정 요청 검증
+
+사용자가 "수정"을 요청하면 출력 직전에 요청된 수정사항을 체크리스트로 만든다.
+
+예)
+
+- reflection_value 수정 완료
+- temporal_status 수정 완료
+- memory_type 수정 완료
+
+하나라도 반영되지 않았으면 출력하지 않고 다시 수정한다.  
+코드: `verify_edit_requests()`, `apply_edit_patches()` (`fidelity.py`), `analyze_recording()` 재시도 (`service.py`).
+
+---
+
+### Rule 8. 원문 우선 원칙
+
+모든 분류는
+
+- `event_summary`
+- GPT가 작성한 문장
+
+이 아니라 **사용자의 원문 발화**를 기준으로 수행한다.
+
+"~라고 말했다" 같은 요약 문체는 temporal_status 판단 근거로 사용하지 않는다.
+
+---
+
+### Rule 9. 현재 지향 표현
+
+다음 표현은 기본적으로 `temporal_status=current`로 분류한다.
+
+- ~하고 싶다
+- ~가 되고 싶다
+- ~를 추구한다
+- ~를 원한다
+- ~를 바라게 된다
+
+반대로 실제로 끝난 사건만 `past`로 분류한다 (예: 어제 화가 났다, 회의를 했다).
+
+코드: `CURRENT_ORIENTED_MARKERS`, `infer_temporal_status()`.
+
+---
+
+### Rule 10. 최종 일관성 검사
+
+최종 JSON 출력 전 다음 항목들의 일관성을 자동 검증한다.
+
+- topic
+- event_summary
+- memory_type
+- temporal_status
+- reflection_value
+- reflection_seed_candidate
+
+예: `memory_type=reflection_seed`인데 `reflection_value=low`이거나, 원문이 current 지향인데 `temporal_status=past`이면 원문을 다시 검토한다.
+
+코드: `check_consistency()`, `enforce_consistency()`.
+
+---
+
+### Rule 11. event_summary 품질 (현재 지향)
+
+"사용자는 ~~라고 말했다" 형식에 머무르지 않고, 의미를 유지한 채 자연스럽게 읽히게 작성한다.
+
+- 나쁨: "사용자는 ... 되고 싶다고 말했다."
+- 좋음: "사용자는 ... 되고 싶다는 바람을 기록했다."
+
+주의: 의미 추가·심리 해석·가치 판단 금지.
+
+코드: `naturalize_event_summary()`.
+
+---
+
+### Rule 12. reflection_value 보완 (인간상·가치관)
+
+다음 유형은 사건보다 회고 가치가 높다. `reflection_seed` 후보와 `reflection_value=medium` 이상을 적극 검토한다.
+
+- 인간상 / 삶의 기준 / 가치관 / 장기 목표
+- 반복적으로 추구하는 태도 / 신념 / 되고 싶은 모습
+
+코드: `HUMAN_IDEAL_MARKERS`, `apply_reflection_value_heuristics()`.
+
+---
+
+## 10. 테스트 관점 (메모 추출 회귀)
+
+| 케이스 | 기대 |
+|--------|------|
+| "평가에 신경쓰지 않는 사람이 되고 싶다" | memory_type=reflection_seed, reflection_seed_candidate=true, reflection_value=medium, temporal_status=current |
+| 수정: reflection_value 상향 + temporal_status=current | 두 항목 모두 반영; 일부만 수정된 JSON 출력 금지 |
+| event_summary "~라고 말했다" + current 원문 | "바람을 기록했다" 등 자연스러운 문체로 보정 |
+| memory_type=reflection_seed + reflection_value=low | enforce_consistency가 medium으로 보정 |
+
+구현: `tests/test_human_ideal_regression.py`.

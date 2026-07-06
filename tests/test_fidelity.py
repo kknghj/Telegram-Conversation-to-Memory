@@ -139,6 +139,10 @@ def test_infer_temporal_status_mixed_and_past():
     assert infer_temporal_status(TOSS_INPUT) == "mixed"
     assert infer_temporal_status("어제 회의를 했다") == "past"
     assert infer_temporal_status("다음 주에 강의를 들을 예정") == "future"
+    assert (
+        infer_temporal_status("다른 사람들에게 보여질 모습, 평가에 신경쓰지 않는 사람이 되고 싶다.")
+        == "current"
+    )
 
 
 def test_detect_value_tags_from_source():
