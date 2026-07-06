@@ -370,6 +370,7 @@ def _apply_edit(
             recent_context=session.get_recent_context(user_data),
             edit_instruction=edit_instruction,
             followup_already_asked=True,
+            previous_draft=draft,
         )
         session.set_draft(user_data, revised)
         failure_hooks.finalize_pending_failure(user_data, _review_message(revised))
