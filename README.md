@@ -245,4 +245,6 @@ Telegram Polling 시작
 - [기억 아카이브 원칙](docs/MEMORY_ARCHIVE_PRINCIPLES.md)
 - [프롬프트 정책](docs/PROMPT_POLICY.md)
 - [향후 로드맵](docs/future_roadmap.md)
+- [역할 기반 에이전트 설계](docs/editorial_agent_system.md)
+- [단계별 검증 계획](docs/validation_plan.md)
 - [Render 배포 체크리스트](docs/deployment_checklist.md)
