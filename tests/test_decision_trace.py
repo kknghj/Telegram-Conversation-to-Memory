@@ -14,6 +14,15 @@ from conversation_to_memory.debug.decision_trace import (
     format_trace_cli,
     is_decision_trace_enabled,
 )
+from conversation_to_memory.debug.trace_store import (
+    FileTraceStore,
+    SupabaseTraceStore,
+    create_trace_store,
+)
+from conversation_to_memory.debug.trace_store.factory import (
+    UnknownTraceStorageBackendError,
+    validate_trace_storage_backend,
+)
 from conversation_to_memory.memory import question as question_service
 from conversation_to_memory.memory.fidelity import detect_project_entities
 
@@ -219,9 +228,9 @@ def test_detect_project_entities_from_source_text():
     assert "Telegram Conversation to Memory" in projects
 
 
-def test_collector_save_writes_trace_file(tmp_path, monkeypatch):
-    monkeypatch.setenv("DEBUG_TRACE_DIR", str(tmp_path))
-    collector = DecisionTraceCollector()
+def test_collector_save_writes_trace_file(tmp_path):
+    store = FileTraceStore(directory=tmp_path)
+    collector = DecisionTraceCollector(store=store)
     collector.set_project_trace(
         build_project_trace(
             llm_projects=["Telegram Conversation to Memory"],
@@ -229,12 +238,47 @@ def test_collector_save_writes_trace_file(tmp_path, monkeypatch):
             final_projects=["Telegram Conversation to Memory"],
         )
     )
-    path = collector.save()
+    path = collector.save(telegram_user_id="dev-user")
     assert path.endswith(".trace.json")
 
     payload = json.loads(open(path, encoding="utf-8").read())
     assert payload["project_trace"]["tag_written"] is True
     assert payload["question_trace"]["evaluated"] is False
+    assert payload["telegram_user_id"] == "dev-user"
+
+
+def test_file_trace_store_respects_custom_directory(tmp_path):
+    store = FileTraceStore(directory=tmp_path)
+    path = store.save(
+        {"question_trace": {"evaluated": True}, "project_trace": {"evaluated": False}},
+        telegram_user_id="user-1",
+    )
+    assert str(tmp_path) in path
+    payload = json.loads(open(path, encoding="utf-8").read())
+    assert payload["question_trace"]["evaluated"] is True
+
+
+def test_create_trace_store_defaults_to_file(monkeypatch):
+    monkeypatch.delenv("TRACE_STORAGE_BACKEND", raising=False)
+    store = create_trace_store()
+    assert isinstance(store, FileTraceStore)
+
+
+def test_create_trace_store_unknown_backend_raises(monkeypatch):
+    monkeypatch.setenv("TRACE_STORAGE_BACKEND", "unknown")
+    with pytest.raises(UnknownTraceStorageBackendError):
+        create_trace_store()
+
+
+def test_validate_trace_storage_backend_accepts_file(monkeypatch):
+    monkeypatch.setenv("TRACE_STORAGE_BACKEND", "file")
+    validate_trace_storage_backend()
+
+
+def test_supabase_trace_store_not_implemented_yet():
+    store = SupabaseTraceStore()
+    with pytest.raises(NotImplementedError):
+        store.save({"question_trace": {}, "project_trace": {}})
 
 
 def test_format_trace_cli_contains_sections():

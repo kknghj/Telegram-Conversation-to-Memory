@@ -55,13 +55,14 @@ def get_decision_trace(user_data: dict[str, Any]):
         DecisionTraceCollector,
         is_decision_trace_enabled,
     )
+    from conversation_to_memory.debug.trace_store.factory import create_trace_store
 
     if not is_decision_trace_enabled():
         return None
 
     collector = user_data.get(KEY_DECISION_TRACE)
     if collector is None:
-        collector = DecisionTraceCollector()
+        collector = DecisionTraceCollector(store=create_trace_store())
         user_data[KEY_DECISION_TRACE] = collector
     return collector
 

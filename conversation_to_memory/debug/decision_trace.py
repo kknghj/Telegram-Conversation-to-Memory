@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import os
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_TRACE_DIR = PROJECT_ROOT / "data" / "debug_traces"
+from conversation_to_memory.debug.trace_store.base import TraceStore
+from conversation_to_memory.debug.trace_store.factory import create_trace_store
 
 QUESTION_TRACE_DEFAULT: dict[str, Any] = {
     "evaluated": False,
@@ -37,11 +35,6 @@ PROJECT_TRACE_DEFAULT: dict[str, Any] = {
 
 def is_decision_trace_enabled() -> bool:
     return os.getenv("DEBUG_DECISION_TRACE", "false").lower() in ("true", "1", "yes")
-
-
-def _trace_dir() -> Path:
-    raw = os.getenv("DEBUG_TRACE_DIR", "").strip()
-    return Path(raw) if raw else DEFAULT_TRACE_DIR
 
 
 def _yes_no(value: bool | None) -> str:
@@ -178,7 +171,8 @@ def build_project_trace(
 class DecisionTraceCollector:
     """Accumulates decision traces for one memo session."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, store: TraceStore | None = None) -> None:
+        self._store = store
         self.question_trace: dict[str, Any] = dict(QUESTION_TRACE_DEFAULT)
         self.project_trace: dict[str, Any] = dict(PROJECT_TRACE_DEFAULT)
         self.trace_path: str = ""
@@ -262,23 +256,25 @@ class DecisionTraceCollector:
             sent=False,
         )
 
-    def save(self, *, timestamp: datetime | None = None) -> str:
-        """Persist trace to disk and return the file path."""
+    def save(
+        self,
+        *,
+        timestamp: datetime | None = None,
+        telegram_user_id: str | None = None,
+        store: TraceStore | None = None,
+    ) -> str:
+        """Persist trace via configured TraceStore and return storage reference."""
         when = timestamp or datetime.now()
-        trace_dir = _trace_dir()
-        trace_dir.mkdir(parents=True, exist_ok=True)
-        filename = when.strftime("%Y-%m-%d_%H%M%S") + ".trace.json"
-        filepath = trace_dir / filename
-
+        trace_store = store or self._store or create_trace_store()
         payload = {
-            "timestamp": when.isoformat(),
             "question_trace": self.question_trace,
             "project_trace": self.project_trace,
         }
-        with open(filepath, "w", encoding="utf-8") as handle:
-            json.dump(payload, handle, ensure_ascii=False, indent=2)
-
-        self.trace_path = str(filepath)
+        self.trace_path = trace_store.save(
+            payload,
+            timestamp=when,
+            telegram_user_id=telegram_user_id,
+        )
         return self.trace_path
 
 
@@ -286,8 +282,14 @@ def save_decision_trace(
     collector: DecisionTraceCollector,
     *,
     timestamp: datetime | None = None,
+    telegram_user_id: str | None = None,
+    store: TraceStore | None = None,
 ) -> str:
     """Save a decision trace if debug mode is enabled."""
     if not is_decision_trace_enabled():
         return ""
-    return collector.save(timestamp=timestamp)
+    return collector.save(
+        timestamp=timestamp,
+        telegram_user_id=telegram_user_id,
+        store=store,
+    )

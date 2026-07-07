@@ -9,6 +9,7 @@ from typing import Any
 
 from app import database as db
 from conversation_to_memory.bot import session
+from conversation_to_memory.debug.decision_trace import save_decision_trace
 from conversation_to_memory.storage.base import MemoryStorage
 from conversation_to_memory.storage.factory import create_storage
 
@@ -45,7 +46,11 @@ def save_current_draft(
 
     trace_collector = session.get_decision_trace(user_data)
     if trace_collector is not None:
-        trace_path = trace_collector.save(timestamp=datetime.now())
+        trace_path = save_decision_trace(
+            trace_collector,
+            timestamp=datetime.now(),
+            telegram_user_id=user_id,
+        )
         full_memory["debug_trace_path"] = trace_path
 
     try:
