@@ -31,9 +31,15 @@ def _validate_env() -> None:
         sys.exit(1)
 
 
-def _print_result(result: chat_service.ChatTurnResult) -> None:
+def _print_result(result: chat_service.ChatTurnResult, user_data: dict | None = None) -> None:
     for message in result.messages:
         print(f"\n봇: {message}\n")
+
+    if user_data is not None:
+        trace_output = chat_service.format_decision_trace_output(user_data)
+        if trace_output:
+            print(trace_output)
+            print()
 
 
 def run_dev_chat(user_id: str | None = None) -> None:
@@ -53,7 +59,7 @@ def run_dev_chat(user_id: str | None = None) -> None:
     print("종료: /quit 또는 Ctrl+C\n")
 
     start_result = chat_service.handle_start(user_data)
-    _print_result(start_result)
+    _print_result(start_result, user_data)
     state = start_result.state
 
     while True:
@@ -72,7 +78,7 @@ def run_dev_chat(user_id: str | None = None) -> None:
             text,
             state=state,
         )
-        _print_result(result)
+        _print_result(result, user_data)
         state = result.state
 
 

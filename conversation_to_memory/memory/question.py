@@ -17,6 +17,7 @@ from conversation_to_memory.failure_recorder import (
     detect_inappropriate_positive_reframe_risk,
     user_has_negative_emotion_context,
 )
+from conversation_to_memory.debug.decision_trace import DecisionTraceCollector
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
@@ -229,6 +230,7 @@ def validate_question(
     latest_user_text: str = "",
     user_texts: list[str] | None = None,
     conversation: list[dict] | None = None,
+    trace_collector: DecisionTraceCollector | None = None,
 ) -> dict:
     """질문 품질 검증 및 meaning_check 제한 적용."""
     validated = normalize_question_result(result)
@@ -241,16 +243,34 @@ def validate_question(
         validated["needs_followup"] = False
         validated["followup_question"] = ""
         draft["interpretation_risk"] = "high"
+        if trace_collector is not None:
+            trace_collector.record_reflection_question_result(
+                result=validated,
+                llm_called=True,
+                skip_reason="information_already_complete",
+            )
         return validated
 
     if latest_user_text and any(k in latest_user_text for k in FATIGUE_KEYWORDS):
         validated["needs_followup"] = False
         validated["followup_question"] = ""
+        if trace_collector is not None:
+            trace_collector.record_reflection_question_result(
+                result=validated,
+                llm_called=True,
+                skip_reason="user_fatigue_signal",
+            )
         return validated
 
     question = validated.get("followup_question", "")
     if not question:
         validated["needs_followup"] = False
+        if trace_collector is not None:
+            trace_collector.record_reflection_question_result(
+                result=validated,
+                llm_called=True,
+                skip_reason="empty_question",
+            )
         return validated
 
     user_messages = _combined_user_text(
@@ -265,11 +285,23 @@ def validate_question(
         validated["needs_followup"] = False
         validated["followup_question"] = ""
         draft["interpretation_risk"] = "high"
+        if trace_collector is not None:
+            trace_collector.record_reflection_question_result(
+                result=validated,
+                llm_called=True,
+                skip_reason="inappropriate_positive_reframe",
+            )
         return validated
 
     if question.count("?") > 1 or question.count("？") > 1:
         validated["needs_followup"] = False
         validated["followup_question"] = ""
+        if trace_collector is not None:
+            trace_collector.record_reflection_question_result(
+                result=validated,
+                llm_called=True,
+                skip_reason="multiple_questions",
+            )
         return validated
 
     for phrase in FORBIDDEN_QUESTION_PHRASES + GROWTH_NARRATIVE_PHRASES:
@@ -281,6 +313,12 @@ def validate_question(
         if term in question:
             validated["needs_followup"] = False
             validated["followup_question"] = ""
+            if trace_collector is not None:
+                trace_collector.record_reflection_question_result(
+                    result=validated,
+                    llm_called=True,
+                    skip_reason="forbidden_inference_term",
+                )
             return validated
 
     mode = validated.get("question_mode", "association")
@@ -300,6 +338,12 @@ def validate_question(
     ):
         validated["question_mode"] = "association"
 
+    if trace_collector is not None:
+        trace_collector.record_reflection_question_result(
+            result=validated,
+            llm_called=True,
+        )
+
     return validated
 
 
@@ -310,10 +354,18 @@ def generate_question(
     draft: dict,
     question_session: dict,
     recent_context: list[dict] | None = None,
+    trace_collector: DecisionTraceCollector | None = None,
 ) -> dict:
     """후속 질문 1개 생성."""
     if question_session.get("questions_asked", 0) >= get_max_questions():
-        return normalize_question_result({"needs_followup": False, "followup_question": ""})
+        result = normalize_question_result({"needs_followup": False, "followup_question": ""})
+        if trace_collector is not None:
+            trace_collector.record_reflection_question_result(
+                result=result,
+                llm_called=False,
+                skip_reason="max_questions_reached",
+            )
+        return result
 
     client = _get_client()
     system = _load_prompt("question_generation_prompt.txt")
@@ -325,19 +377,40 @@ def generate_question(
         recent_context=recent_context,
     )
 
-    response = client.chat.completions.create(
-        model=_get_model(),
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_content},
-        ],
-        temperature=0.45,
-        max_tokens=800,
-        response_format={"type": "json_object"},
-    )
+    try:
+        response = client.chat.completions.create(
+            model=_get_model(),
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=0.45,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+        raw = response.choices[0].message.content.strip()
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        result = normalize_question_result({"needs_followup": False, "followup_question": ""})
+        if trace_collector is not None:
+            trace_collector.record_reflection_question_result(
+                result=result,
+                llm_called=True,
+                skip_reason="json_parse_failed",
+            )
+            trace_collector.update_question_trace(parse_error=str(exc))
+        return result
+    except Exception as exc:
+        result = normalize_question_result({"needs_followup": False, "followup_question": ""})
+        if trace_collector is not None:
+            trace_collector.record_reflection_question_result(
+                result=result,
+                llm_called=True,
+                skip_reason="llm_call_failed",
+            )
+            trace_collector.update_question_trace(error=str(exc))
+        return result
 
-    raw = response.choices[0].message.content.strip()
-    data = json.loads(raw)
     latest_user = ""
     if user_texts:
         latest_user = user_texts[-1]
@@ -348,6 +421,7 @@ def generate_question(
         latest_user_text=latest_user,
         user_texts=user_texts,
         conversation=conversation,
+        trace_collector=trace_collector,
     )
 
 

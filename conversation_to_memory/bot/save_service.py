@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from app import database as db
@@ -41,6 +42,11 @@ def save_current_draft(
         "conversation": current.get("conversation", []) if current else [],
         "approved": True,
     }
+
+    trace_collector = session.get_decision_trace(user_data)
+    if trace_collector is not None:
+        trace_path = trace_collector.save(timestamp=datetime.now())
+        full_memory["debug_trace_path"] = trace_path
 
     try:
         storage_ref = (storage or archive_storage).save(
