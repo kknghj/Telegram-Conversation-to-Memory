@@ -193,6 +193,7 @@ def handle_resume_choice(
                 recent_context=session.get_recent_context(user_data),
                 cancelled_draft=session.get_cancelled_draft(user_data),
                 cancellation_reason=user_data.get(session.KEY_CANCELLATION_REASON, ""),
+                trace_collector=session.get_decision_trace(user_data),
             )
             session.clear_cancelled_draft(user_data)
             session.set_draft(user_data, draft)
@@ -246,6 +247,7 @@ def handle_recording(
             recent_context=session.get_recent_context(user_data),
             cancelled_draft=session.get_cancelled_draft(user_data),
             cancellation_reason=user_data.get(session.KEY_CANCELLATION_REASON, ""),
+            trace_collector=session.get_decision_trace(user_data),
         )
         session.set_draft(user_data, draft)
         failure_hooks.record_korean_misparse(
@@ -286,6 +288,7 @@ def handle_followup(
             conversation=current["conversation"],
             recent_context=session.get_recent_context(user_data),
             followup_already_asked=True,
+            trace_collector=session.get_decision_trace(user_data),
         )
         session.set_draft(user_data, draft)
         failure_hooks.finalize_pending_failure(user_data, _review_message(draft))
@@ -371,6 +374,7 @@ def _apply_edit(
             edit_instruction=edit_instruction,
             followup_already_asked=True,
             previous_draft=draft,
+            trace_collector=session.get_decision_trace(user_data),
         )
         session.set_draft(user_data, revised)
         failure_hooks.finalize_pending_failure(user_data, _review_message(revised))
@@ -499,3 +503,19 @@ def dispatch_message(
         return handle_edit(user_id, user_data, stripped)
 
     return handle_route_message(user_id, user_data, stripped)
+
+
+def format_decision_trace_output(user_data: dict[str, Any]) -> str | None:
+    """Return formatted decision trace output when debug mode is enabled."""
+    from conversation_to_memory.debug.decision_trace import (
+        format_trace_cli,
+        is_decision_trace_enabled,
+    )
+
+    if not is_decision_trace_enabled():
+        return None
+
+    collector = user_data.get(session.KEY_DECISION_TRACE)
+    if collector is None:
+        return None
+    return format_trace_cli(collector.as_dict())

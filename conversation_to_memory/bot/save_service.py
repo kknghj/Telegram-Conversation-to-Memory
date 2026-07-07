@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from app import database as db
 from conversation_to_memory.bot import session
+from conversation_to_memory.debug.decision_trace import save_decision_trace
 from conversation_to_memory.storage.base import MemoryStorage
 from conversation_to_memory.storage.factory import create_storage
 
@@ -41,6 +43,15 @@ def save_current_draft(
         "conversation": current.get("conversation", []) if current else [],
         "approved": True,
     }
+
+    trace_collector = session.get_decision_trace(user_data)
+    if trace_collector is not None:
+        trace_path = save_decision_trace(
+            trace_collector,
+            timestamp=datetime.now(),
+            telegram_user_id=user_id,
+        )
+        full_memory["debug_trace_path"] = trace_path
 
     try:
         storage_ref = (storage or archive_storage).save(

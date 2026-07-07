@@ -11,9 +11,14 @@ from openai import OpenAI
 
 from conversation_to_memory.memory.fidelity import (
     apply_edit_patches,
+    detect_project_entities,
     enforce_consistency,
     validate_draft,
     verify_edit_requests,
+)
+from conversation_to_memory.debug.decision_trace import (
+    DecisionTraceCollector,
+    build_project_trace,
 )
 from conversation_to_memory.memory.question import is_reflection_agent_enabled
 
@@ -156,6 +161,7 @@ def analyze_recording(
     followup_already_asked: bool = False,
     edit_instruction: str = "",
     previous_draft: dict | None = None,
+    trace_collector: DecisionTraceCollector | None = None,
 ) -> dict:
     """사용자 원문을 분석해 draft JSON 생성."""
     client = _get_client()
@@ -209,9 +215,37 @@ def analyze_recording(
         )
 
         raw = response.choices[0].message.content.strip()
-        data = json.loads(raw)
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            if trace_collector is not None:
+                trace_collector.set_project_trace(
+                    build_project_trace(parse_error=str(exc), llm_called=True)
+                )
+            raise
         draft = normalize_draft(data)
+        llm_projects = list(draft.get("projects") or [])
+        keyword_projects = detect_project_entities(source_text)
         draft = validate_draft(draft, source_text)
+        if trace_collector is not None:
+            trace_collector.set_project_trace(
+                build_project_trace(
+                    llm_projects=llm_projects,
+                    keyword_projects=keyword_projects,
+                    final_projects=list(draft.get("projects") or []),
+                    llm_called=True,
+                )
+            )
+        if (
+            trace_collector is not None
+            and not is_reflection_agent_enabled()
+            and not followup_already_asked
+        ):
+            trace_collector.record_legacy_summary_question(
+                needs_followup=bool(draft.get("needs_followup")),
+                followup_question=str(draft.get("followup_question") or ""),
+                llm_called=True,
+            )
         return enforce_consistency(draft, source_text)
 
     draft = _call_model(edit_instruction)

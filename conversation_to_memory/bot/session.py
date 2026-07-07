@@ -13,6 +13,7 @@ KEY_FOLLOWUP_ASKED = "followup_asked"
 KEY_QUESTION_SESSION = "question_session"
 KEY_PERSISTED_DRAFT_ID = "persisted_draft_id"
 KEY_PENDING_FAILURE = "pending_failure_recording"
+KEY_DECISION_TRACE = "decision_trace"
 
 CANCEL_MESSAGE = (
     "저장을 취소했습니다. 방금 요약은 저장하지 않았습니다.\n"
@@ -46,6 +47,28 @@ def ensure_session(user_data: dict[str, Any]) -> dict[str, Any]:
 
 def get_draft(user_data: dict[str, Any]) -> dict[str, Any] | None:
     return user_data.get(KEY_CURRENT_DRAFT)
+
+
+def get_decision_trace(user_data: dict[str, Any]):
+    """Return the active decision trace collector when debug mode is enabled."""
+    from conversation_to_memory.debug.decision_trace import (
+        DecisionTraceCollector,
+        is_decision_trace_enabled,
+    )
+    from conversation_to_memory.debug.trace_store.factory import create_trace_store
+
+    if not is_decision_trace_enabled():
+        return None
+
+    collector = user_data.get(KEY_DECISION_TRACE)
+    if collector is None:
+        collector = DecisionTraceCollector(store=create_trace_store())
+        user_data[KEY_DECISION_TRACE] = collector
+    return collector
+
+
+def clear_decision_trace(user_data: dict[str, Any]) -> None:
+    user_data.pop(KEY_DECISION_TRACE, None)
 
 
 def set_draft(user_data: dict[str, Any], draft: dict[str, Any]) -> None:
@@ -174,6 +197,7 @@ def reset_recording_session(user_data: dict[str, Any]) -> None:
         KEY_FOLLOWUP_ASKED,
         KEY_QUESTION_SESSION,
         KEY_PENDING_FAILURE,
+        KEY_DECISION_TRACE,
     ):
         user_data.pop(key, None)
 
@@ -189,6 +213,7 @@ def reset_all(user_data: dict[str, Any]) -> None:
         KEY_QUESTION_SESSION,
         KEY_PERSISTED_DRAFT_ID,
         KEY_PENDING_FAILURE,
+        KEY_DECISION_TRACE,
     ):
         user_data.pop(key, None)
 
