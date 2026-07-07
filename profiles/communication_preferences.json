@@ -1,0 +1,31 @@
+{
+  "profile_type": "communication_preferences",
+  "version": 1,
+  "last_updated": "2026-07-07",
+  "source": "user_confirmed",
+  "confidence": "user_confirmed_hypothesis",
+  "notes": "AI 또는 텔레그램 봇이 사용자에게 말을 걸 때 참고할 장기 커뮤니케이션 선호입니다. 기록 입력 흐름을 방해하지 않는 간결한 응답을 우선합니다.",
+  "preferred_interaction": [
+    "존대 사용",
+    "간결하고 실용적인 답변",
+    "기록 입력 중 불필요한 질문 최소화",
+    "질문은 필요한 경우에만 0~1개로 제한",
+    "사용자가 이미 말한 내용을 다시 묻지 않기",
+    "피로 신호가 있으면 추가 질문 중단"
+  ],
+  "interaction_to_avoid": [
+    "반말",
+    "장황한 인사말",
+    "코칭형 질문",
+    "상담형 질문",
+    "긍정 유도 질문",
+    "이미 제공된 정보의 반복 확인",
+    "기록 입력보다 대화를 길게 끌고 가는 응답"
+  ],
+  "question_policy": {
+    "default_question_count": 0,
+    "maximum_question_count": 1,
+    "ask_only_when_needed": true,
+    "stop_questions_on_fatigue_signal": true
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "profile_type": "interpretation_preferences",
+  "version": 1,
+  "last_updated": "2026-07-07",
+  "source": "user_confirmed",
+  "confidence": "user_confirmed_hypothesis",
+  "notes": "사용자 기록을 해석할 때 적용할 장기 원칙입니다. 흥미로운 해설을 지향하되, 기록 근거와 수정 가능성을 우선합니다.",
+  "interpretation_principles": [
+    "모든 해석은 기록 근거에서 시작합니다.",
+    "근거가 부족하면 모른다고 말합니다.",
+    "성격, 감정, 인생 방향을 단정하지 않습니다.",
+    "성장 서사나 긍정 왜곡을 만들지 않습니다.",
+    "사용자가 반박하고 수정할 수 있는 가설 형태로 제시합니다.",
+    "재미있지만 근거가 약한 해석은 폐기합니다.",
+    "정확하지만 밋밋한 해석은 재작성 후보로 표시합니다."
+  ],
+  "avoid_interpretation_patterns": [
+    "근거보다 해석을 앞세우는 방식",
+    "사용자를 고정된 성격 유형으로 묶는 방식",
+    "기록을 교훈이나 성장 결론으로 과하게 정리하는 방식",
+    "재미를 위해 사실성과 신중함을 낮추는 방식"
+  ],
+  "revision_policy": {
+    "allow_user_correction": true,
+    "mark_low_evidence_interpretations": true,
+    "discard_fun_but_weak_interpretations": true,
+    "flag_accurate_but_flat_interpretations_for_rewrite": true
+  }
+}
