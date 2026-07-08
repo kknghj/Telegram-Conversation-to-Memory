@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -15,6 +16,8 @@ from conversation_to_memory.bot import (
     session,
     states,
 )
+from conversation_to_memory.debug_trace import recorder as trace_recorder
+from conversation_to_memory.debug_trace.store import save_trace_safely
 from conversation_to_memory.memory import question as question_service
 from conversation_to_memory.memory import service as memory_service
 
@@ -100,6 +103,35 @@ def _persist_cancelled_draft(
 
 def _review_message(draft: dict[str, Any]) -> str:
     return memory_service.format_review_message(draft)
+
+
+def _record_analysis_failure_trace(
+    user_data: dict[str, Any],
+    current: dict[str, Any] | None,
+    exc: Exception,
+) -> None:
+    """요약 분석 자체가 실패하면 즉시 trace를 남긴다 (메모가 저장되지 않는 케이스)."""
+    error = "json_parse_failed" if isinstance(exc, json.JSONDecodeError) else "llm_call_failed"
+    user_texts = current.get("user_texts", []) if current else []
+    trace = trace_recorder.build_trace(
+        user_data=user_data,
+        question_trace={
+            "evaluated": False,
+            "need_followup": None,
+            "reason": "analysis_failed",
+            "llm_called": False,
+            "generated": False,
+            "sent": False,
+        },
+        project_trace={
+            "evaluated": False,
+            "detected": False,
+            "reason": "analysis_failed",
+        },
+        raw_input_preview="\n".join(user_texts),
+        error=error,
+    )
+    save_trace_safely(trace)
 
 
 def _maybe_followup_or_review(
@@ -263,6 +295,7 @@ def handle_recording(
         return _maybe_followup_or_review(user_id, user_data, draft)
     except Exception as e:
         logger.exception("기록 분석 오류")
+        _record_analysis_failure_trace(user_data, current, e)
         return ChatTurnResult(
             messages=[f"분석 중 오류: {e}\n다시 「요약」을 시도하거나 내용을 추가해주세요."],
             state=states.RECORDING,

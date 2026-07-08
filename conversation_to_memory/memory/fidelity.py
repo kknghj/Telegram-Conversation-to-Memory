@@ -323,6 +323,49 @@ def validate_draft(draft: dict, source_text: str) -> dict:
     return validated
 
 
+def build_project_trace(draft: dict, source_text: str) -> dict:
+    """프로젝트 태그 판단 과정 trace 생성 (tag_written은 저장 시점에 확정).
+
+    confidence: 원문 별칭 매칭(규칙 기반)으로 확인된 선택이면 1.0,
+    LLM 추출만 있고 원문 매칭이 없으면 0.6 (근거 약함).
+    """
+    detected_entities = detect_project_entities(source_text)
+    selected = list(draft.get("projects") or [])
+    candidates = list(dict.fromkeys([*selected, *detected_entities]))
+
+    if not candidates:
+        return {
+            "evaluated": True,
+            "detected": False,
+            "candidate_projects": [],
+            "selected_project": None,
+            "selected_projects": [],
+            "confidence": None,
+            "reason": "no_project_signal_in_source",
+        }
+
+    if not selected:
+        return {
+            "evaluated": True,
+            "detected": True,
+            "candidate_projects": candidates,
+            "selected_project": None,
+            "selected_projects": [],
+            "confidence": 0.0,
+            "reason": "candidate_without_selection",
+        }
+
+    rule_confirmed = any(project in detected_entities for project in selected)
+    return {
+        "evaluated": True,
+        "detected": True,
+        "candidate_projects": candidates,
+        "selected_project": selected[0],
+        "selected_projects": selected,
+        "confidence": 1.0 if rule_confirmed else 0.6,
+    }
+
+
 def contains_forbidden_growth_narrative(draft: dict) -> bool:
     """테스트용: 금지 성장 서사 포함 여부."""
     text = " ".join(

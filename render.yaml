@@ -26,6 +26,12 @@ services:
         value: memories
       - key: SUPABASE_DRAFTS_TABLE
         value: drafts
+      - key: DECISION_TRACE_ENABLED
+        value: "true"
+      - key: DECISION_TRACE_STORE
+        value: supabase
+      - key: DECISION_TRACE_ENVIRONMENT
+        value: production
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: OPENAI_API_KEY

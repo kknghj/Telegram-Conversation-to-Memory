@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from conversation_to_memory.debug_trace.recorder import KEY_PENDING_TRACE
+
 KEY_CURRENT_SESSION = "current_session"
 KEY_CURRENT_DRAFT = "current_draft"
 KEY_CANCELLED_DRAFT = "cancelled_draft"
@@ -136,6 +138,7 @@ def cancel_current_draft(
     user_data.pop(KEY_CURRENT_SESSION, None)
     user_data.pop(KEY_FOLLOWUP_ASKED, None)
     user_data.pop(KEY_QUESTION_SESSION, None)
+    user_data.pop(KEY_PENDING_TRACE, None)
 
 
 def clear_cancelled_draft(user_data: dict[str, Any]) -> None:
@@ -174,6 +177,7 @@ def reset_recording_session(user_data: dict[str, Any]) -> None:
         KEY_FOLLOWUP_ASKED,
         KEY_QUESTION_SESSION,
         KEY_PENDING_FAILURE,
+        KEY_PENDING_TRACE,
     ):
         user_data.pop(key, None)
 
@@ -189,6 +193,7 @@ def reset_all(user_data: dict[str, Any]) -> None:
         KEY_QUESTION_SESSION,
         KEY_PERSISTED_DRAFT_ID,
         KEY_PENDING_FAILURE,
+        KEY_PENDING_TRACE,
     ):
         user_data.pop(key, None)
 

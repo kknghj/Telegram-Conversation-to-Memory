@@ -56,6 +56,7 @@ DEFAULT_QUESTION_RESULT: dict[str, Any] = {
     "needs_followup": False,
     "open_questions": [],
     "reasoning": "",
+    "skip_reason": "",
 }
 
 
@@ -182,8 +183,11 @@ def normalize_question_result(data: dict) -> dict:
     result["open_questions"] = list(result.get("open_questions") or [])
     result["needs_followup"] = bool(result.get("needs_followup"))
     result["followup_question"] = str(result.get("followup_question") or "").strip()
+    result["skip_reason"] = str(result.get("skip_reason") or "").strip()
     if not result["needs_followup"]:
         result["followup_question"] = ""
+        if not result["skip_reason"]:
+            result["skip_reason"] = "information_already_complete"
     return result
 
 
@@ -240,17 +244,21 @@ def validate_question(
     ):
         validated["needs_followup"] = False
         validated["followup_question"] = ""
+        validated["skip_reason"] = "summary_with_negative_emotion"
         draft["interpretation_risk"] = "high"
         return validated
 
     if latest_user_text and any(k in latest_user_text for k in FATIGUE_KEYWORDS):
         validated["needs_followup"] = False
         validated["followup_question"] = ""
+        validated["skip_reason"] = "fatigue_keyword_detected"
         return validated
 
     question = validated.get("followup_question", "")
     if not question:
         validated["needs_followup"] = False
+        if not validated.get("skip_reason"):
+            validated["skip_reason"] = "empty_question_generated"
         return validated
 
     user_messages = _combined_user_text(
@@ -264,12 +272,14 @@ def validate_question(
     ):
         validated["needs_followup"] = False
         validated["followup_question"] = ""
+        validated["skip_reason"] = "positive_reframe_risk"
         draft["interpretation_risk"] = "high"
         return validated
 
     if question.count("?") > 1 or question.count("？") > 1:
         validated["needs_followup"] = False
         validated["followup_question"] = ""
+        validated["skip_reason"] = "multiple_questions_in_one"
         return validated
 
     for phrase in FORBIDDEN_QUESTION_PHRASES + GROWTH_NARRATIVE_PHRASES:
@@ -281,6 +291,7 @@ def validate_question(
         if term in question:
             validated["needs_followup"] = False
             validated["followup_question"] = ""
+            validated["skip_reason"] = "forbidden_inference_term"
             return validated
 
     mode = validated.get("question_mode", "association")
@@ -313,7 +324,13 @@ def generate_question(
 ) -> dict:
     """후속 질문 1개 생성."""
     if question_session.get("questions_asked", 0) >= get_max_questions():
-        return normalize_question_result({"needs_followup": False, "followup_question": ""})
+        return normalize_question_result(
+            {
+                "needs_followup": False,
+                "followup_question": "",
+                "skip_reason": "max_questions_reached",
+            }
+        )
 
     client = _get_client()
     system = _load_prompt("question_generation_prompt.txt")
