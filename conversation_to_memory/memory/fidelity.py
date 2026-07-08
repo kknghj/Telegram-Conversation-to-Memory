@@ -82,9 +82,14 @@ PROJECT_ENTITY_ALIASES: dict[str, tuple[str, ...]] = {
 # 이 신호가 있으면 reflection_seed 후보(장기 패턴)로 표시한다.
 REFLECTION_SEED_SIGNALS: tuple[str, ...] = (
     "만들고 싶",
+    "되고 싶",
+    "살아보고 싶",
     "중요하게 여기",
     "중요하다고 생각",
     "가치관",
+    "인간상",
+    "삶의 기준",
+    "장기 목표",
     "철학",
     "신념",
     "지향",
@@ -99,6 +104,36 @@ REFLECTION_SEED_SIGNALS: tuple[str, ...] = (
     "옳지 않다",
     "하고 싶지 않",
 )
+
+# 현재 지향 표현 — temporal_status=current 판단 근거 (원문 기준).
+CURRENT_ORIENTED_MARKERS: tuple[str, ...] = (
+    "하고 싶",
+    "가 되고 싶",
+    "가 되고싶",
+    "를 추구",
+    "를 원한다",
+    "를 원해",
+    "바라게",
+    "바란다",
+    "살아보고 싶",
+    "이 되고 싶",
+)
+
+# 인간상·가치관 등 회고 가치가 높은 유형 (reflection_value medium 이상 검토).
+HUMAN_IDEAL_MARKERS: tuple[str, ...] = (
+    "인간상",
+    "가치관",
+    "삶의 기준",
+    "장기 목표",
+    "신념",
+    "되고 싶",
+    "추구",
+    "지향",
+)
+
+REFLECTION_VALUE_LEVELS: dict[str, int] = {"low": 0, "medium": 1, "high": 2}
+
+REPORTED_SPEECH_PAST_RE = re.compile(r"(?:라|다)고\s*(?:말|했)")
 
 
 def _normalize_text(text: str) -> str:
@@ -197,18 +232,29 @@ def detect_future_tense(source_text: str) -> list[str]:
 
 
 def infer_temporal_status(source_text: str) -> str:
-    """원문 시제를 past/future/mixed로 분류.
+    """원문 시제를 past/future/current/mixed로 분류.
 
-    미래 표지가 있으면 완료 사건으로 단정하지 않도록 future/mixed로 표시한다.
+    event_summary·요약 문체가 아니라 사용자 원문 발화 의미를 기준으로 판단한다.
     """
     source = _normalize_text(source_text)
     has_future = bool(detect_future_tense(source))
-    # 완료된 과거 사건 표지 (했다/였다/봤다 등 종결).
-    has_past = bool(re.search(r"(했어|했다|였어|였다|봤어|봤다|됐어|됐다|드러났)", source))
-    if has_future and has_past:
+    # 완료된 과거 사건 표지 (했다/였다/봤다/만났 등 종결).
+    has_past = bool(
+        re.search(
+            r"(했어|했다|였어|였다|봤어|봤다|됐어|됐다|드러났|만났|화가\s*났|회의를\s*했)",
+            source,
+        )
+    )
+    has_current = any(marker in source for marker in CURRENT_ORIENTED_MARKERS)
+
+    if has_future and (has_past or has_current):
         return "mixed"
     if has_future:
         return "future"
+    if has_current and has_past:
+        return "mixed"
+    if has_current:
+        return "current"
     return "past"
 
 
@@ -273,6 +319,232 @@ def draft_hides_value(draft: dict, source_text: str) -> bool:
     return True
 
 
+def naturalize_event_summary(source_text: str, summary: str) -> str:
+    """현재 지향 원문인데 '~라고 말했다' 요약 문체일 때 자연스럽게 다듬는다."""
+    if not summary:
+        return summary
+    if infer_temporal_status(source_text) != "current":
+        return summary
+    if not REPORTED_SPEECH_PAST_RE.search(summary):
+        return summary
+
+    normalized = summary.strip()
+    aspirational = re.sub(
+        r"(.+?(?:하고\s*싶|가\s*되고\s*싶|되고\s*싶|살아보고\s*싶)(?:다|어|습니다?)?)다고\s*말했다\.?$",
+        r"\1는 바람을 기록했다.",
+        normalized,
+    )
+    if aspirational != normalized:
+        return aspirational
+
+    aspirational_alt = re.sub(
+        r"(.+?(?:하고\s*싶|가\s*되고\s*싶|되고\s*싶|살아보고\s*싶)(?:다|어|습니다?)?)라고\s*말했다\.?$",
+        r"\1는 바람을 기록했다.",
+        normalized,
+    )
+    if aspirational_alt != normalized:
+        return aspirational_alt
+
+    generic = re.sub(
+        r"라고\s*말했다\.?$",
+        "다는 바람을 기록했다.",
+        normalized,
+    )
+    return generic if generic != normalized else summary
+
+
+def apply_reflection_value_heuristics(draft: dict, source_text: str) -> dict:
+    """인간상·가치관 등 회고 가치가 높은 유형에 reflection_value를 보강한다."""
+    source = _normalize_text(source_text)
+    has_ideal = any(marker in source for marker in HUMAN_IDEAL_MARKERS)
+    if not has_ideal and not detect_reflection_seed_signals(source):
+        return draft
+
+    result = dict(draft)
+    current_level = REFLECTION_VALUE_LEVELS.get(result.get("reflection_value", "low"), 0)
+    if current_level < REFLECTION_VALUE_LEVELS["medium"]:
+        result["reflection_value"] = "medium"
+
+    if is_reflection_seed_candidate(result, source_text) or has_ideal:
+        result["reflection_seed_candidate"] = True
+        if result.get("memory_type") == "event":
+            result["memory_type"] = "reflection_seed"
+
+    return result
+
+
+def check_consistency(draft: dict, source_text: str) -> list[str]:
+    """topic·event_summary·memory_type·temporal_status·reflection 필드 간 모순을 검출."""
+    issues: list[str] = []
+    memory_type = draft.get("memory_type")
+    reflection_value = draft.get("reflection_value", "low")
+    temporal_status = draft.get("temporal_status", "past")
+    seed_candidate = bool(draft.get("reflection_seed_candidate"))
+    source_temporal = infer_temporal_status(source_text)
+    summary = str(draft.get("event_summary", ""))
+
+    if memory_type == "reflection_seed" and reflection_value == "low":
+        issues.append("memory_type=reflection_seed but reflection_value=low")
+    if seed_candidate and reflection_value == "low":
+        issues.append("reflection_seed_candidate=true but reflection_value=low")
+    if (
+        memory_type == "reflection_seed"
+        and temporal_status == "past"
+        and source_temporal == "current"
+    ):
+        issues.append("reflection_seed with temporal_status=past but source is current")
+    if seed_candidate and temporal_status == "past" and source_temporal == "current":
+        issues.append("reflection_seed_candidate with temporal_status=past but source is current")
+    if source_temporal == "current" and REPORTED_SPEECH_PAST_RE.search(summary):
+        issues.append("current source but event_summary uses reported past speech")
+
+    return issues
+
+
+def enforce_consistency(draft: dict, source_text: str) -> dict:
+    """원문 우선 원칙으로 분류·요약·회고 필드를 일관되게 맞춘다."""
+    result = dict(draft)
+    result["temporal_status"] = infer_temporal_status(source_text)
+    result = apply_reflection_value_heuristics(result, source_text)
+
+    summary = naturalize_event_summary(source_text, str(result.get("event_summary", "")))
+    if summary:
+        result["event_summary"] = summary
+
+    for issue in check_consistency(result, source_text):
+        if "reflection_value=low" in issue:
+            result["reflection_value"] = "medium"
+        if "temporal_status=past but source is current" in issue:
+            result["temporal_status"] = "current"
+        if "reported past speech" in issue:
+            result["event_summary"] = naturalize_event_summary(
+                source_text, str(result.get("event_summary", ""))
+            )
+
+    return result
+
+
+def parse_edit_checklist(edit_instruction: str) -> dict[str, object]:
+    """사용자 수정 요청에서 기대 필드 변경을 추출한다."""
+    text = edit_instruction.strip().lower()
+    expectations: dict[str, object] = {}
+
+    if re.search(r"temporal[_\s-]?status|시제", text):
+        if re.search(r"current|현재", text):
+            expectations["temporal_status"] = "current"
+        elif re.search(r"past|과거", text):
+            expectations["temporal_status"] = "past"
+        elif re.search(r"future|미래", text):
+            expectations["temporal_status"] = "future"
+
+    if re.search(r"reflection[_\s-]?value|회고\s*가치|reflection\s*value", text):
+        if re.search(r"높|올|증|가산|더\s*높|상향", text):
+            expectations["reflection_value_increase"] = True
+        level_match = re.search(r"\b(low|medium|high)\b", text)
+        if level_match:
+            expectations["reflection_value"] = level_match.group(1)
+
+    if re.search(r"memory[_\s-]?type|기억\s*유형|memory\s*type", text):
+        if "reflection_seed" in text or "reflection seed" in text:
+            expectations["memory_type"] = "reflection_seed"
+        elif "event" in text:
+            expectations["memory_type"] = "event"
+
+    if re.search(r"reflection[_\s-]?seed|장기\s*패턴|reflection\s*seed", text):
+        if re.search(r"true|후보|표시|candidate", text):
+            expectations["reflection_seed_candidate"] = True
+
+    return expectations
+
+
+def verify_edit_requests(
+    edit_instruction: str,
+    before: dict,
+    after: dict,
+    source_text: str,
+) -> list[str]:
+    """수정 요청 체크리스트 중 미반영 항목을 반환한다."""
+    if not edit_instruction.strip():
+        return []
+
+    expectations = parse_edit_checklist(edit_instruction)
+    unfulfilled: list[str] = []
+
+    if "temporal_status" in expectations:
+        expected = str(expectations["temporal_status"])
+        actual = after.get("temporal_status")
+        if actual != expected:
+            unfulfilled.append(
+                f"temporal_status 수정 미완료 (기대: {expected}, 실제: {actual})"
+            )
+
+    if expectations.get("reflection_value_increase"):
+        before_level = REFLECTION_VALUE_LEVELS.get(before.get("reflection_value", "low"), 0)
+        after_level = REFLECTION_VALUE_LEVELS.get(after.get("reflection_value", "low"), 0)
+        if after_level <= before_level:
+            unfulfilled.append(
+                "reflection_value 수정 미완료 "
+                f"(기대: 상향, 실제: {before.get('reflection_value')} -> {after.get('reflection_value')})"
+            )
+
+    if "reflection_value" in expectations and not expectations.get("reflection_value_increase"):
+        expected = str(expectations["reflection_value"])
+        if after.get("reflection_value") != expected:
+            unfulfilled.append(
+                f"reflection_value 수정 미완료 (기대: {expected}, 실제: {after.get('reflection_value')})"
+            )
+
+    if "memory_type" in expectations:
+        expected = str(expectations["memory_type"])
+        if after.get("memory_type") != expected:
+            unfulfilled.append(
+                f"memory_type 수정 미완료 (기대: {expected}, 실제: {after.get('memory_type')})"
+            )
+
+    if expectations.get("reflection_seed_candidate") and not after.get(
+        "reflection_seed_candidate"
+    ):
+        unfulfilled.append("reflection_seed_candidate 수정 미완료 (기대: true)")
+
+    return unfulfilled
+
+
+def apply_edit_patches(
+    edit_instruction: str,
+    draft: dict,
+    source_text: str,
+    *,
+    before: dict | None = None,
+) -> dict:
+    """LLM이 놓친 수정 요청을 결정론적으로 보정한다."""
+    result = enforce_consistency(dict(draft), source_text)
+    expectations = parse_edit_checklist(edit_instruction)
+    previous = before or {}
+
+    if expectations.get("temporal_status") == "current":
+        result["temporal_status"] = "current"
+    elif expectations.get("temporal_status"):
+        result["temporal_status"] = str(expectations["temporal_status"])
+
+    if expectations.get("reflection_value_increase"):
+        before_level = REFLECTION_VALUE_LEVELS.get(previous.get("reflection_value", "low"), 0)
+        after_level = REFLECTION_VALUE_LEVELS.get(result.get("reflection_value", "low"), 0)
+        if after_level <= before_level:
+            bumped = min(before_level + 1, 2)
+            result["reflection_value"] = ["low", "medium", "high"][bumped]
+
+    if "reflection_value" in expectations and not expectations.get("reflection_value_increase"):
+        result["reflection_value"] = str(expectations["reflection_value"])
+
+    if "memory_type" in expectations:
+        result["memory_type"] = str(expectations["memory_type"])
+
+    if expectations.get("reflection_seed_candidate"):
+        result["reflection_seed_candidate"] = True
+
+    return enforce_consistency(result, source_text)
+
+
 def assess_interpretation_risk(draft: dict, source_text: str) -> str:
     unsupported = detect_unsupported_inferences(draft, source_text)
     if unsupported:
@@ -315,12 +587,14 @@ def validate_draft(draft: dict, source_text: str) -> dict:
     # reflection_seed 후보 표시 및 memory_type 승격.
     seed_candidate = is_reflection_seed_candidate(validated, source_text)
     validated["reflection_seed_candidate"] = seed_candidate
-    if seed_candidate and validated.get("memory_type") == "event" and draft_hides_value(
-        draft, source_text
+    if seed_candidate and validated.get("memory_type") == "event" and (
+        draft_hides_value(draft, source_text)
+        or detect_reflection_seed_signals(source_text)
+        or any(marker in _normalize_text(source_text) for marker in HUMAN_IDEAL_MARKERS)
     ):
         validated["memory_type"] = "reflection_seed"
 
-    return validated
+    return enforce_consistency(validated, source_text)
 
 
 def build_project_trace(draft: dict, source_text: str) -> dict:
