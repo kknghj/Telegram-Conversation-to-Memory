@@ -46,6 +46,28 @@ FORBIDDEN_QUESTION_PHRASES = (
     "앞으로 어떻게",
 )
 
+# 정확히 요약된 기록이라도 새 생각으로 이어질 수 있는 원문 손잡이.
+# 이 신호는 meaning_check가 아니라 association/contrast/value_probe 후보로만 사용한다.
+EXPANSION_SIGNAL_KEYWORDS = (
+    "기억이 났",
+    "떠올",
+    "아쉬",
+    "자제해야",
+    "불확실",
+    "열등감",
+    "거리낌",
+    "원하는 방향",
+    "만들고 싶",
+    "중요하게",
+    "판단",
+    "기준",
+    "새로운 관점",
+    "새로운 생각",
+    "만족도",
+    "후속질문",
+    "질문",
+)
+
 DEFAULT_QUESTION_RESULT: dict[str, Any] = {
     "topic": "",
     "emotion": {"labels": [], "evidence_strength": "none"},
@@ -117,8 +139,11 @@ def _build_question_user_content(
             {
                 "topic": draft.get("topic"),
                 "event_summary": draft.get("event_summary"),
+                "memory_candidate": draft.get("memory_candidate"),
                 "key_phrases": draft.get("key_phrases", []),
                 "emerging_themes": draft.get("emerging_themes", []),
+                "reflection_value": draft.get("reflection_value"),
+                "memory_type": draft.get("memory_type"),
                 "interpretation_risk": draft.get("interpretation_risk"),
                 "unsupported_inferences": draft.get("unsupported_inferences", []),
             },
@@ -209,6 +234,98 @@ def _combined_user_text(
     return " ".join(parts)
 
 
+def _draft_signal_text(draft: dict) -> str:
+    parts: list[str] = []
+    for key in ("topic", "event_summary", "memory_candidate"):
+        value = draft.get(key)
+        if value:
+            parts.append(str(value))
+    for key in ("key_phrases", "emerging_themes", "value_tags"):
+        values = draft.get(key) or []
+        if isinstance(values, list):
+            parts.extend(str(item) for item in values if item)
+    return " ".join(parts)
+
+
+def has_reflective_expansion_signal(
+    *,
+    draft: dict,
+    user_texts: list[str] | None = None,
+    conversation: list[dict] | None = None,
+) -> bool:
+    """정확한 요약 너머로 안전하게 확장할 만한 원문 손잡이가 있는지 판단."""
+    source = " ".join(
+        [
+            _combined_user_text(user_texts=user_texts, conversation=conversation),
+            _draft_signal_text(draft),
+        ]
+    )
+    if any(keyword in source for keyword in EXPANSION_SIGNAL_KEYWORDS):
+        return True
+    if draft.get("reflection_seed_candidate"):
+        return True
+    if draft.get("reflection_value") in ("medium", "high") and draft.get("key_phrases"):
+        return True
+    return False
+
+
+def _first_compact_key_phrase(draft: dict) -> str:
+    for phrase in draft.get("key_phrases") or []:
+        text = str(phrase).strip()
+        if 2 <= len(text) <= 45:
+            return text
+    return ""
+
+
+def build_grounded_expansion_question(
+    *,
+    draft: dict,
+    user_texts: list[str] | None = None,
+    conversation: list[dict] | None = None,
+) -> tuple[str, str]:
+    """LLM이 complete로 스킵한 경우 사용할 보수적 확장 질문 후보."""
+    source = " ".join(
+        [
+            _combined_user_text(user_texts=user_texts, conversation=conversation),
+            _draft_signal_text(draft),
+        ]
+    )
+
+    if "후속질문" in source or ("질문" in source and "새로운" in source):
+        return (
+            "association",
+            "예전에 새로운 생각으로 이어졌던 질문은 어떤 방식이었는지 떠오르는 예가 있나요?",
+        )
+    if "열등감" in source:
+        return (
+            "association",
+            "'열등감'이 자리를 차지했다는 표현에서, 비교의 기준이 가장 선명해진 순간이 있었나요?",
+        )
+    if "자제해야" in source or "술 마시는" in source:
+        return (
+            "archive_decision",
+            "'자제해야 하는데'라는 말에서, 이번 기록에 남기고 싶은 건 아쉬움 쪽인가요 아니면 스트레스 푸는 방식에 대한 경계 쪽인가요?",
+        )
+
+    phrase = _first_compact_key_phrase(draft)
+    if phrase:
+        return (
+            "association",
+            f"'{phrase}'라는 표현을 나중에 다시 읽을 때, 어떤 장면이나 맥락이 같이 떠오르면 좋을까요?",
+        )
+
+    if has_reflective_expansion_signal(
+        draft=draft,
+        user_texts=user_texts,
+        conversation=conversation,
+    ):
+        return (
+            "contrast",
+            "이 기록을 나중에 다시 읽는다면, 지금 말한 내용 중 어떤 표현이 가장 먼저 떠오르면 좋을까요?",
+        )
+    return "", ""
+
+
 def should_skip_followup_after_summary(
     *,
     user_texts: list[str] | None = None,
@@ -256,10 +373,26 @@ def validate_question(
 
     question = validated.get("followup_question", "")
     if not question:
-        validated["needs_followup"] = False
-        if not validated.get("skip_reason"):
-            validated["skip_reason"] = "empty_question_generated"
-        return validated
+        mode, fallback = build_grounded_expansion_question(
+            draft=draft,
+            user_texts=user_texts,
+            conversation=conversation,
+        )
+        if fallback and validated.get("skip_reason") in (
+            "",
+            "information_already_complete",
+            "empty_question_generated",
+        ):
+            validated["needs_followup"] = True
+            validated["followup_question"] = fallback
+            validated["question_mode"] = mode
+            validated["skip_reason"] = ""
+            question = fallback
+        else:
+            validated["needs_followup"] = False
+            if not validated.get("skip_reason"):
+                validated["skip_reason"] = "no_reflective_handle"
+            return validated
 
     user_messages = _combined_user_text(
         user_texts=user_texts,
