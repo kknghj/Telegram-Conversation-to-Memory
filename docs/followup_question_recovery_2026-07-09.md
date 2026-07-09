@@ -177,3 +177,35 @@ LLM이 질문을 생성하지 않았더라도, 코드가 원문 손잡이를 감
 | 질문이 기억을 풍부하게 만든 세션 | 질문 포함 세션의 60% 이상 |
 
 이 지표가 충족되면 `docs/validation_plan.md`의 2단계 회고 씨앗 수집 검증을 본격 진행한다.
+
+## 추가 분석 (2026-07-09 밤) — 수정이 반영되지 않았던 진짜 원인
+
+위 수정 배포 이후에도 신규 기록 2건이 동일하게 `information_already_complete`로 skip되었다.
+재분석 결과 원인은 두 가지였다.
+
+### 원인 A. 운영에서 reflection 경로 자체가 꺼져 있었다
+
+- `render.yaml`에 `REFLECTION_AGENT_ENABLED`가 없어 운영 봇은 기본값 false로 동작했다.
+- false면 `question_flow.maybe_followup_or_review`가 레거시 분기로 빠져,
+  요약 LLM이 준 `draft["needs_followup"]`만 확인하고 `question.py`의
+  질문 생성·복구 로직(`validate_question`, `build_grounded_expansion_question`)은 아예 호출되지 않는다.
+- 레거시 skip trace의 형태(`llm_called: true, reason: information_already_complete`)가
+  reflection 경로의 skip trace와 동일해서 두 경로를 구분할 수 없었고, 이것이 오진의 원인이 됐다.
+
+결정적 증거: skip된 두 메시지 모두 원문에 "모르겠다"가 포함되어 있었다.
+reflection 경로였다면 피로 키워드 검사에 걸려 `fatigue_keyword_detected`로 기록됐어야 한다.
+`information_already_complete`가 나왔다는 것은 reflection 경로가 실행되지 않았다는 뜻이다.
+
+### 원인 B. 피로 키워드가 긴 성찰형 문장에 오탐
+
+reflection을 켜기만 하면 이번 메시지들은 이번엔 "모르겠다" 때문에
+`fatigue_keyword_detected`로 skip됐을 것이다. "왜 그런지 모르겠다" 같은
+긴 성찰형 문장의 "모르겠다"는 중단 신호가 아니다.
+
+### 조치
+
+1. `render.yaml`·`.env.example`에 `REFLECTION_AGENT_ENABLED=true`, `REFLECTION_MAX_QUESTIONS=2` 추가 (운영 활성화)
+2. `question.py`에 `has_fatigue_signal()` 도입 — 피로 키워드는 25자 이하 짧은 답변에서만 인정,
+   긴 본문에서는 "질문 그만" 같은 명시적 중단 표현만 인정
+3. question trace에 `engine` 필드(`reflection` / `legacy`) 추가 — 앞으로 어느 경로가 실행됐는지 trace만으로 구분 가능
+4. 실제 skip됐던 메시지를 재현하는 회귀 테스트 추가 (`test_long_reflective_feedback_message_recovers_question`)

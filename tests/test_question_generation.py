@@ -7,6 +7,7 @@ from conversation_to_memory.memory.question import (
     build_grounded_expansion_question,
     can_use_meaning_check,
     generate_question,
+    has_fatigue_signal,
     has_reflective_expansion_signal,
     merge_question_into_draft,
     normalize_question_result,
@@ -78,6 +79,48 @@ def test_validate_question_stops_on_fatigue_signal():
         latest_user_text="모르겠어. 됐어.",
     )
     assert result["needs_followup"] is False
+
+
+def test_fatigue_signal_only_on_short_replies():
+    assert has_fatigue_signal("모르겠어. 됐어.") is True
+    assert has_fatigue_signal("그만") is True
+    assert has_fatigue_signal("질문 그만 해줘. 오늘은 여기까지 기록할래.") is True
+    # 긴 성찰형 문장 속 "모르겠다"는 중단 신호가 아니다.
+    assert has_fatigue_signal("뭐가 그리 쉽나. 왜 봇이 이미 내 말을 다 이해했다고 넘기는지 모르겠다.") is False
+    assert has_fatigue_signal("나는 저런 사람 입장을 생각 못하는 건지 안하는 건지 모르겠다.") is False
+
+
+def test_long_reflective_feedback_message_recovers_question():
+    """실제 운영에서 skip됐던 메시지 재현 — 피로 오탐 없이 질문이 복구되어야 한다."""
+    draft = {
+        **DRAFT_LOW_RISK,
+        "topic": "텔레그램 기억봇 질문 기준에 대한 피드백",
+        "event_summary": "질문 여부 기준을 낮췄는데도 봇이 여전히 질문을 건너뛴다고 아쉬워했다.",
+        "key_phrases": ["여전히 질문을 넘기고 있다"],
+    }
+    user_text = (
+        "텔레그램 기억봇의 질문 여부 기준을 낮추고 새로 2개를 작성하고 있는데 "
+        "여전히 질문을 넘기고 있다. 뭐가 그리 쉽나. 왜 봇이 이미 내 말을 다 "
+        "이해했다고 넘기는지 모르겠다. 내가 한 말을 정말 정확히 이해하고 있다면 "
+        "요약이라고 말한 후에 이렇게 질문을 던져."
+    )
+
+    result = validate_question(
+        {
+            "question_mode": "association",
+            "followup_question": "",
+            "needs_followup": False,
+            "skip_reason": "information_already_complete",
+        },
+        draft=draft,
+        question_session={"questions_asked": 0, "last_question_mode": None, "meaning_check_count": 0},
+        latest_user_text=user_text,
+        user_texts=[user_text],
+    )
+
+    assert result["needs_followup"] is True
+    assert result["followup_question"] != ""
+    assert result["skip_reason"] == ""
 
 
 def test_complete_but_expandable_recovers_grounded_question():

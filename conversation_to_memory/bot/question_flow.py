@@ -36,6 +36,7 @@ def _question_trace(
     llm_called: bool,
     generated: bool,
     sent: bool,
+    engine: str,
     error: str | None = None,
 ) -> dict[str, Any]:
     trace: dict[str, Any] = {
@@ -46,6 +47,7 @@ def _question_trace(
         "llm_called": llm_called,
         "generated": generated,
         "sent": sent,
+        "engine": engine,
     }
     if error:
         trace["error"] = error
@@ -70,6 +72,7 @@ def _maybe_reflection_followup_or_review(
                 llm_called=False,
                 generated=False,
                 sent=False,
+                engine="reflection",
             ),
         )
         return _review(draft, review_message)
@@ -94,6 +97,7 @@ def _maybe_reflection_followup_or_review(
                 llm_called=True,
                 generated=False,
                 sent=False,
+                engine="reflection",
                 error="json_parse_failed",
             ),
         )
@@ -109,6 +113,7 @@ def _maybe_reflection_followup_or_review(
                 llm_called=True,
                 generated=False,
                 sent=False,
+                engine="reflection",
                 error="llm_call_failed",
             ),
         )
@@ -127,6 +132,7 @@ def _maybe_reflection_followup_or_review(
                 llm_called=True,
                 generated=True,
                 sent=True,
+                engine="reflection",
             ),
         )
         latest_user = current["user_texts"][-1] if current.get("user_texts") else ""
@@ -160,6 +166,7 @@ def _maybe_reflection_followup_or_review(
             llm_called=skip_reason != "max_questions_reached",
             generated=False,
             sent=False,
+            engine="reflection",
         ),
     )
     return _review(draft, review_message)
@@ -193,6 +200,7 @@ def maybe_followup_or_review(
                 llm_called=True,
                 generated=True,
                 sent=True,
+                engine="legacy",
             ),
         )
         question = draft["followup_question"]
@@ -216,6 +224,7 @@ def maybe_followup_or_review(
             llm_called=not followup_asked,
             generated=False,
             sent=False,
+            engine="legacy",
         ),
     )
     return _review(draft, review_message)

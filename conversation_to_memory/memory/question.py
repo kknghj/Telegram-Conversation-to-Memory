@@ -35,6 +35,27 @@ VALID_QUESTION_MODES = frozenset(
 
 FATIGUE_KEYWORDS = ("됐어", "됐다", "그만", "모르겠", "싫어", "중단", "패스")
 
+# 긴 본문에서도 명시적으로 질문 중단을 뜻하는 표현.
+EXPLICIT_STOP_PHRASES = ("질문 그만", "그만 물어", "질문하지 마", "질문 안 해도")
+
+# 피로 키워드가 짧은 답변에 있을 때만 피로 신호로 본다.
+# "왜 그런지 모르겠다" 같은 긴 성찰형 문장의 "모르겠다"는 중단 신호가 아니다.
+FATIGUE_SHORT_REPLY_MAX_CHARS = 25
+
+
+def has_fatigue_signal(latest_user_text: str) -> bool:
+    """사용자가 질문을 그만 받고 싶다는 신호인지 판단."""
+    text = latest_user_text.strip()
+    if not text:
+        return False
+    if any(phrase in text for phrase in EXPLICIT_STOP_PHRASES):
+        return True
+    if len(text) <= FATIGUE_SHORT_REPLY_MAX_CHARS and any(
+        keyword in text for keyword in FATIGUE_KEYWORDS
+    ):
+        return True
+    return False
+
 FORBIDDEN_QUESTION_PHRASES = (
     "배운 점",
     "견뎌",
@@ -365,7 +386,7 @@ def validate_question(
         draft["interpretation_risk"] = "high"
         return validated
 
-    if latest_user_text and any(k in latest_user_text for k in FATIGUE_KEYWORDS):
+    if latest_user_text and has_fatigue_signal(latest_user_text):
         validated["needs_followup"] = False
         validated["followup_question"] = ""
         validated["skip_reason"] = "fatigue_keyword_detected"
