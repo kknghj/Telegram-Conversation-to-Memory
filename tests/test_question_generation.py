@@ -4,8 +4,10 @@ import json
 from unittest.mock import MagicMock, patch
 
 from conversation_to_memory.memory.question import (
+    build_grounded_expansion_question,
     can_use_meaning_check,
     generate_question,
+    has_reflective_expansion_signal,
     merge_question_into_draft,
     normalize_question_result,
     validate_question,
@@ -76,6 +78,69 @@ def test_validate_question_stops_on_fatigue_signal():
         latest_user_text="모르겠어. 됐어.",
     )
     assert result["needs_followup"] is False
+
+
+def test_complete_but_expandable_recovers_grounded_question():
+    draft = {
+        **DRAFT_LOW_RISK,
+        "topic": "승진에 대한 감정",
+        "event_summary": "승진일자 불확실성과 동기 승진을 보며 열등감이 생겼다.",
+        "key_phrases": ["남들보다 뒤떨어진다는 열등감"],
+    }
+
+    result = validate_question(
+        {
+            "question_mode": "association",
+            "followup_question": "",
+            "needs_followup": False,
+            "skip_reason": "information_already_complete",
+        },
+        draft=draft,
+        question_session={"questions_asked": 0, "last_question_mode": None, "meaning_check_count": 0},
+        user_texts=["동기들이 먼저 승진하는 것을 보니 남들보다 뒤떨어진다는 열등감도 내 마음에 자리를 차지하고 있는 것 같다."],
+    )
+
+    assert result["needs_followup"] is True
+    assert result["skip_reason"] == ""
+    assert "열등감" in result["followup_question"]
+    assert result["question_mode"] == "association"
+
+
+def test_no_reflective_handle_stays_skipped():
+    result = validate_question(
+        {
+            "question_mode": "association",
+            "followup_question": "",
+            "needs_followup": False,
+            "skip_reason": "no_reflective_handle",
+        },
+        draft=DRAFT_LOW_RISK,
+        question_session={"questions_asked": 0, "last_question_mode": None, "meaning_check_count": 0},
+        user_texts=["회의가 있었다."],
+    )
+
+    assert result["needs_followup"] is False
+    assert result["skip_reason"] == "no_reflective_handle"
+
+
+def test_reflective_expansion_signal_detects_product_feedback():
+    draft = {
+        **DRAFT_LOW_RISK,
+        "topic": "텔레그램 기억 봇 프로젝트",
+        "event_summary": "후속질문이 줄어 사용 만족도가 떨어졌다고 느꼈다.",
+    }
+
+    assert has_reflective_expansion_signal(
+        draft=draft,
+        user_texts=["이전에는 새로운 관점의 질문이 새로운 생각으로 이어졌는데 지금은 만족도가 떨어진다."],
+    )
+
+    mode, question = build_grounded_expansion_question(
+        draft=draft,
+        user_texts=["후속질문이 안 나와서 만족도가 떨어진다. 새로운 관점의 질문이 필요하다."],
+    )
+    assert mode == "association"
+    assert "새로운 생각" in question
 
 
 def test_merge_question_into_draft_appends_open_questions():
