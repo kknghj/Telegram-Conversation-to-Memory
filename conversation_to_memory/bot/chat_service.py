@@ -402,6 +402,7 @@ def _apply_edit(
             conversation=current["conversation"],
             recent_context=session.get_recent_context(user_data),
             edit_instruction=edit_instruction,
+            previous_draft=draft,
             followup_already_asked=True,
         )
         session.set_draft(user_data, revised)

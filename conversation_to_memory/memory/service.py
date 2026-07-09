@@ -9,7 +9,12 @@ from typing import Any
 
 from openai import OpenAI
 
-from conversation_to_memory.memory.fidelity import validate_draft
+from conversation_to_memory.memory.fidelity import (
+    apply_edit_patches,
+    enforce_consistency,
+    validate_draft,
+    verify_edit_requests,
+)
 from conversation_to_memory.memory.question import is_reflection_agent_enabled
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
@@ -43,7 +48,7 @@ DEFAULT_DRAFT: dict[str, Any] = {
     "followup_question": "",
 }
 
-VALID_TEMPORAL_STATUS = frozenset({"past", "future", "ongoing", "mixed"})
+VALID_TEMPORAL_STATUS = frozenset({"past", "future", "ongoing", "mixed", "current"})
 
 
 def _load_prompt(filename: str) -> str:
@@ -150,6 +155,7 @@ def analyze_recording(
     cancellation_reason: str = "",
     followup_already_asked: bool = False,
     edit_instruction: str = "",
+    previous_draft: dict | None = None,
 ) -> dict:
     """사용자 원문을 분석해 draft JSON 생성."""
     client = _get_client()
@@ -163,43 +169,85 @@ def analyze_recording(
         followup_already_asked=followup_already_asked,
     )
 
-    user_content_parts = [
-        "아래 사용자 원문을 기억 아카이브 초안 JSON으로 정리하세요.",
-        f"## 사용자 원문\n{source_text}",
-    ]
-    if is_reflection_agent_enabled():
-        user_content_parts.append(
-            "## 제약\n"
-            "후속 질문은 별도 단계에서 생성한다. "
-            "needs_followup=false, followup_question=\"\" 로 설정하라."
+    def _call_model(instruction: str) -> dict:
+        user_content_parts = [
+            "아래 사용자 원문을 기억 아카이브 초안 JSON으로 정리하세요.",
+            f"## 사용자 원문\n{source_text}",
+        ]
+        if is_reflection_agent_enabled():
+            user_content_parts.append(
+                "## 제약\n"
+                "후속 질문은 별도 단계에서 생성한다. "
+                "needs_followup=false, followup_question=\"\" 로 설정하라."
+            )
+        if context_block:
+            user_content_parts.append(context_block)
+        if instruction:
+            user_content_parts.append(
+                "## 수정 요청\n"
+                f"{instruction}\n\n"
+                "수정 요청에 나열된 모든 항목을 반영했는지 출력 직전에 체크리스트로 검증하라. "
+                "하나라도 미반영이면 다시 수정하라."
+            )
+        if conversation:
+            user_content_parts.append("## 추가 대화")
+            for turn in conversation:
+                role = "사용자" if turn["role"] == "user" else "봇"
+                user_content_parts.append(f"{role}: {turn['content']}")
+
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": "\n\n".join(user_content_parts)},
+        ]
+
+        response = client.chat.completions.create(
+            model=_get_model(),
+            messages=messages,
+            temperature=0.2,
+            max_tokens=1200,
+            response_format={"type": "json_object"},
         )
-    if context_block:
-        user_content_parts.append(context_block)
-    if edit_instruction:
-        user_content_parts.append(f"## 수정 요청\n{edit_instruction}")
-    if conversation:
-        user_content_parts.append("## 추가 대화")
-        for turn in conversation:
-            role = "사용자" if turn["role"] == "user" else "봇"
-            user_content_parts.append(f"{role}: {turn['content']}")
 
-    messages = [
-        {"role": "system", "content": system},
-        {"role": "user", "content": "\n\n".join(user_content_parts)},
-    ]
+        raw = response.choices[0].message.content.strip()
+        data = json.loads(raw)
+        draft = normalize_draft(data)
+        draft = validate_draft(draft, source_text)
+        return enforce_consistency(draft, source_text)
 
-    response = client.chat.completions.create(
-        model=_get_model(),
-        messages=messages,
-        temperature=0.2,
-        max_tokens=1200,
-        response_format={"type": "json_object"},
-    )
+    draft = _call_model(edit_instruction)
 
-    raw = response.choices[0].message.content.strip()
-    data = json.loads(raw)
-    draft = normalize_draft(data)
-    return validate_draft(draft, source_text)
+    if edit_instruction and previous_draft is not None:
+        draft = apply_edit_patches(
+            edit_instruction,
+            draft,
+            source_text,
+            before=previous_draft,
+        )
+        unfulfilled = verify_edit_requests(
+            edit_instruction, previous_draft, draft, source_text
+        )
+        if unfulfilled:
+            reinforced = (
+                f"{edit_instruction}\n\n"
+                "[필수] 다음 수정사항이 아직 반영되지 않았습니다: "
+                f"{'; '.join(unfulfilled)}. 모두 반영한 뒤에만 JSON을 출력하세요."
+            )
+            draft = _call_model(reinforced)
+            draft = apply_edit_patches(
+                edit_instruction,
+                draft,
+                source_text,
+                before=previous_draft,
+            )
+            unfulfilled = verify_edit_requests(
+                edit_instruction, previous_draft, draft, source_text
+            )
+            if unfulfilled:
+                raise ValueError(
+                    "수정 요청이 일부만 반영되었습니다: " + "; ".join(unfulfilled)
+                )
+
+    return draft
 
 
 def extract_memory(conversation: list[dict]) -> dict:
@@ -243,6 +291,11 @@ def format_review_message(memory: dict) -> str:
         temporal_note = (
             f"\n🕒 시제: {temporal_status} — 아직 일어나지 않은/예정된 내용이 포함되어 있습니다. "
             "완료된 사실로 기록하지 않았는지 확인하세요.\n"
+        )
+    elif temporal_status == "current":
+        temporal_note = (
+            "\n🕒 시제: current — 현재 마음·지향·바람을 나타내는 내용입니다. "
+            "과거 사실(~라고 말했다)로 기록하지 않았는지 확인하세요.\n"
         )
 
     seed_note = ""
