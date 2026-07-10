@@ -202,3 +202,94 @@ def test_validate_draft_keeps_neutral_case_unchanged():
     assert validated["reflection_seed_candidate"] is False
     assert validated["value_tags"] == []
     assert validated.get("memory_type") != "reflection_seed"
+
+
+def test_personal_time_guilt_is_not_user_time_saving_tag():
+    """개인 생활의 '시간 낭비' 표현은 제품 UX 가치 태그와 구분한다."""
+    running_text = (
+        "퇴근하자마자 누우면 가끔 시간을 낭비한다고 생각하는데 "
+        "러닝 후 지친몸으로 누우니 하루가 잘 마무리된 것 같아."
+    )
+    tags = detect_value_tags(running_text)
+    assert "사용자 시간 절약" not in tags
+
+
+def test_process_time_waste_is_user_time_saving_tag():
+    """업무·절차의 '시간 낭비'는 제품/편의 가치로 태깅한다."""
+    process_text = (
+        "매번 같은 서류를 다시 작성하느라 시간을 낭비하는 절차가 너무 번거로워. "
+        "사용자가 클릭 몇 번으로 끝낼 수 있게 만들고 싶어."
+    )
+    tags = detect_value_tags(process_text)
+    assert "사용자 시간 절약" in tags
+
+
+def test_ambiguous_time_waste_without_product_context_is_not_tagged():
+    """맥락 신호가 약한 '시간 낭비'만으로는 태깅하지 않는다."""
+    vague = "오늘은 시간을 낭비한 것 같아."
+    assert "사용자 시간 절약" not in detect_value_tags(vague)
+
+
+def test_app_wasting_user_time_is_tagged():
+    """앱이 사용자를 붙잡아 시간을 낭비하게 하는 맥락은 태깅한다."""
+    app_text = (
+        "그 앱은 중간 광고로 사용자를 붙잡아 시간을 낭비하게 만드는 것 같아. "
+        "서비스가 편의성을 해친다."
+    )
+    tags = detect_value_tags(app_text)
+    assert "사용자 시간 절약" in tags
+
+
+def test_parse_excluded_value_tags_from_delete_request():
+    from conversation_to_memory.memory.fidelity import parse_excluded_value_tags
+
+    excluded = parse_excluded_value_tags(
+        'value_tags의 "사용자 시간 절약"은 적절하지 않아. 삭제해줘.'
+    )
+    assert excluded == ["사용자 시간 절약"]
+
+
+def test_validate_draft_respects_excluded_value_tags():
+    draft = _toss_base_draft(value_tags=["사용자 시간 절약", "다크패턴 거부"])
+    validated = validate_draft(
+        draft,
+        TOSS_INPUT,
+        excluded_value_tags=["사용자 시간 절약"],
+    )
+    assert "사용자 시간 절약" not in validated["value_tags"]
+    assert "다크패턴 거부" in validated["value_tags"]
+
+
+def test_apply_edit_patches_removes_excluded_value_tag():
+    from conversation_to_memory.memory.fidelity import apply_edit_patches, verify_edit_requests
+
+    before = _toss_base_draft(value_tags=["사용자 시간 절약", "다크패턴 거부"])
+    after = dict(before)
+    patched = apply_edit_patches(
+        "수정 value_tags의 사용자 시간 절약을 삭제해줘.",
+        after,
+        TOSS_INPUT,
+        before=before,
+    )
+    assert "사용자 시간 절약" not in patched["value_tags"]
+    assert verify_edit_requests(
+        "수정 value_tags의 사용자 시간 절약을 삭제해줘.",
+        before,
+        patched,
+        TOSS_INPUT,
+    ) == []
+
+
+def test_edit_removal_survives_validate_draft_keyword_merge():
+    """수정으로 뺀 태그가 validate_draft 키워드 병합으로 되살아나지 않아야 한다."""
+    from conversation_to_memory.memory.fidelity import (
+        apply_edit_patches,
+        parse_excluded_value_tags,
+    )
+
+    instruction = "수정 value tag의 사용자 시간 절약을 삭제해줘."
+    excluded = parse_excluded_value_tags(instruction)
+    draft = _toss_base_draft(value_tags=[])
+    validated = validate_draft(draft, TOSS_INPUT, excluded_value_tags=excluded)
+    patched = apply_edit_patches(instruction, validated, TOSS_INPUT, before=draft)
+    assert "사용자 시간 절약" not in patched["value_tags"]

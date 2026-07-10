@@ -71,6 +71,7 @@ FAILURE_TYPES = frozenset(
         "repeated_question",
         "korean_misparse",
         "correction_ignored",
+        "correction_partial",
         "memory_unavailable_ignored",
         "inappropriate_positive_reframe",
         "value_hidden_by_event",
@@ -81,6 +82,7 @@ RULE_BY_FAILURE_TYPE: dict[str, str] = {
     "repeated_question": "Rule 4",
     "korean_misparse": "Rule 2",
     "correction_ignored": "Rule 3",
+    "correction_partial": "Rule 7",
     "memory_unavailable_ignored": "Rule 1",
     "inappropriate_positive_reframe": "Rule 5",
     "value_hidden_by_event": "Rule 6",
@@ -90,6 +92,10 @@ DEFAULT_EXPECTED_BEHAVIOR: dict[str, str] = {
     "repeated_question": "기억하지 못한다는 답변 후 추가 질문을 생성하지 말았어야 함.",
     "korean_misparse": "조건문을 people 관계로 압축하지 말고 conditions로 저장했어야 함.",
     "correction_ignored": "사용자 정정을 우선 반영하고 기존 오해를 반복하지 말았어야 함.",
+    "correction_partial": (
+        "수정 요청에 나열된 모든 항목(value_tags 삭제 포함)을 반영하고, "
+        "일부만 반영된 JSON을 출력하지 말았어야 함."
+    ),
     "memory_unavailable_ignored": "기억 불가 신호 후 추가 질문 없이 요약·저장 확인으로 종료했어야 함.",
     "inappropriate_positive_reframe": (
         "사용자가 걱정과 자기비판을 표현한 뒤 요약을 요청했으므로, "
@@ -105,6 +111,7 @@ DEFAULT_ROOT_CAUSE: dict[str, str] = {
     "repeated_question": "기억 불가 신호를 무시하고 후속 질문을 생성함",
     "korean_misparse": "조건문을 사람 관계로 압축하여 해석함",
     "correction_ignored": "사용자 정정 후에도 기존 해석을 고집함",
+    "correction_partial": "수정 요청 중 일부 필드만 반영하고 나머지는 누락함",
     "memory_unavailable_ignored": "답변 종료 신호를 추가 질문 기회로 오인함",
     "inappropriate_positive_reframe": (
         "부정 감정 표현 직후 반대 감정과 즐거운 순간을 묻는 긍정 전환 질문을 생성함"

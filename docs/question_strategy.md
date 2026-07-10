@@ -424,6 +424,10 @@ conditions:
   `reflection_value = high`로 설정한다.
 - 반복 가능한 가치 판단은 `value_tags`에 남긴다.
   (예: 사용자 시간 절약, 편의성, 생산성, 다크패턴 거부, 불안 마케팅 거부)
+  - `사용자 시간 절약`: 제품·업무 절차에서 불필요한 시간·수고를 줄이는 가치.
+    "시간을 낭비"는 맥락 의존적이다. 앱·서비스·절차·반복 과정이 시간을 뺏는 맥락이면 태깅하고,
+    개인의 하루를 알차게 쓰지 못했다는 자기관리·자책 맥락이면 태깅하지 않는다.
+    코드: `is_user_time_saving_value()` (`fidelity.py`).
 
 **reflection_seed 후보 신호**
 
@@ -479,9 +483,11 @@ conditions:
 - reflection_value 수정 완료
 - temporal_status 수정 완료
 - memory_type 수정 완료
+- value_tags 삭제 완료 (요청한 태그 제외)
 
 하나라도 반영되지 않았으면 출력하지 않고 다시 수정한다.  
 코드: `verify_edit_requests()`, `apply_edit_patches()` (`fidelity.py`), `analyze_recording()` 재시도 (`service.py`).
+`validate_draft()`는 사용자가 제외한 `value_tags`를 원문 키워드로 재주입하지 않는다.
 
 ---
 
@@ -563,5 +569,8 @@ conditions:
 | 수정: reflection_value 상향 + temporal_status=current | 두 항목 모두 반영; 일부만 수정된 JSON 출력 금지 |
 | event_summary "~라고 말했다" + current 원문 | "바람을 기록했다" 등 자연스러운 문체로 보정 |
 | memory_type=reflection_seed + reflection_value=low | enforce_consistency가 medium으로 보정 |
+| 러닝 일지 + "시간을 낭비한다"(자기관리) | value_tags에 "사용자 시간 절약" 없음 |
+| 수정: value_tags에서 "사용자 시간 절약" 삭제 | 삭제 유지; validate_draft 키워드 재주입 금지 |
 
-구현: `tests/test_human_ideal_regression.py`.
+구현: `tests/test_human_ideal_regression.py`, `tests/test_fidelity.py`.
+실패 스냅샷: `data/evaluation/interpretation_failures.jsonl` (`telegram_20260710_running_value_tag_correction`).

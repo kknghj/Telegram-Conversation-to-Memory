@@ -12,6 +12,7 @@ from openai import OpenAI
 from conversation_to_memory.memory.fidelity import (
     apply_edit_patches,
     enforce_consistency,
+    parse_excluded_value_tags,
     validate_draft,
     verify_edit_requests,
 )
@@ -211,9 +212,14 @@ def analyze_recording(
         raw = response.choices[0].message.content.strip()
         data = json.loads(raw)
         draft = normalize_draft(data)
-        draft = validate_draft(draft, source_text)
+        draft = validate_draft(
+            draft,
+            source_text,
+            excluded_value_tags=excluded_value_tags,
+        )
         return enforce_consistency(draft, source_text)
 
+    excluded_value_tags = parse_excluded_value_tags(edit_instruction)
     draft = _call_model(edit_instruction)
 
     if edit_instruction and previous_draft is not None:

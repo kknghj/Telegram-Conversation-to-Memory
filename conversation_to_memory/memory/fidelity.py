@@ -55,13 +55,92 @@ FUTURE_TENSE_MARKERS: tuple[str, ...] = (
     "앞두고",
 )
 
-# 반복 가능한 가치 판단 → value_tags. 키워드 하나라도 원문에 있으면 태그를 부여한다.
+# 반복 가능한 가치 판단 → value_tags.
+# "사용자 시간 절약"은 제품·업무 절차에서 불필요한 시간·수고를 줄이는 가치다.
+# "시간을 낭비"처럼 개인 자기관리와 제품/절차 맥락에 모두 쓰이는 표현은
+# 전체 문맥(제품·절차 vs 개인 생활)으로 판별한다.
 VALUE_TAG_KEYWORDS: dict[str, tuple[str, ...]] = {
-    "사용자 시간 절약": ("시간을 줄이", "일을 줄이", "시간 절약", "수고를 덜", "시간과 마음을 낭비", "시간을 낭비"),
+    "사용자 시간 절약": (
+        "시간을 줄이",
+        "일을 줄이",
+        "시간 절약",
+        "수고를 덜",
+        "시간과 마음을 낭비",
+    ),
     "편의성": ("편의성", "편리", "편하게"),
     "생산성": ("생산성", "효율"),
     "다크패턴 거부": ("중간 광고", "상주시간", "상주 시간", "다크패턴", "다크 패턴", "무식하게"),
     "불안 마케팅 거부": ("불안을 이용", "불안 마케팅", "차단에 대한 불안", "불안을 자극"),
+}
+
+# 맥락 판별이 필요한 모호 표현 (개인 자기관리 vs 제품·절차 낭비).
+USER_TIME_SAVING_AMBIGUOUS_KEYWORDS: tuple[str, ...] = (
+    "시간을 낭비",
+    "시간 낭비",
+    "시간을 허비",
+    "시간 허비",
+)
+
+# 제품·업무·절차 맥락 — 모호 표현이 있어도 "사용자 시간 절약"으로 본다.
+USER_TIME_SAVING_PRODUCT_CONTEXT: tuple[str, ...] = (
+    "사용자",
+    "앱",
+    "서비스",
+    "제품",
+    "미니앱",
+    "절차",
+    "과정",
+    "업무",
+    "서류",
+    "양식",
+    "클릭",
+    "단계",
+    "대기",
+    "로딩",
+    "광고",
+    "편의",
+    "효율",
+    "일을 줄이",
+    "사람들의 일",
+    "수고를",
+    "반복적",
+    "부차적",
+    "쓸데없",
+    "불필요",
+    "번거",
+    "수동으로",
+    "다시 작성",
+    "다시 입력",
+)
+
+# 개인 생활·자기관리 맥락 — 모호 표현만으로는 태깅하지 않는다.
+USER_TIME_SAVING_PERSONAL_CONTEXT: tuple[str, ...] = (
+    "하루",
+    "퇴근",
+    "누우",
+    "누워",
+    "침대",
+    "러닝",
+    "운동",
+    "조깅",
+    "산책",
+    "알차게",
+    "부지런",
+    "게으",
+    "한심",
+    "자책",
+    "마무리된",
+    "하루를 잘",
+    "내 시간",
+    "나의 시간",
+    "쉬는",
+    "휴식",
+)
+
+# 수정 요청에서 태그명을 인식하기 위한 별칭 (정규화 키 → 표기 변형).
+VALUE_TAG_ALIASES: dict[str, tuple[str, ...]] = {
+    tag: (tag, tag.replace(" ", ""), tag.lower())
+    for tag in VALUE_TAG_KEYWORDS
 }
 
 # 지속적으로 추적할 사용자 프로젝트 엔티티. 별칭을 정규화된 이름으로 매핑한다.
@@ -258,11 +337,59 @@ def infer_temporal_status(source_text: str) -> str:
     return "past"
 
 
+def _has_any(source: str, markers: tuple[str, ...]) -> bool:
+    return any(marker in source for marker in markers)
+
+
+def is_user_time_saving_value(source_text: str) -> bool:
+    """제품·업무 절차의 시간 절약 가치인지 전체 맥락으로 판별한다.
+
+    - 강한 키워드(일을 줄이, 시간 절약 등)가 있으면 True.
+    - "시간을 낭비"처럼 모호한 표현만 있으면 제품·절차 맥락이 있고
+      개인 자기관리 맥락이 우세하지 않을 때만 True.
+    """
+    source = _normalize_text(source_text)
+    strong = VALUE_TAG_KEYWORDS["사용자 시간 절약"]
+    if _has_any(source, strong):
+        return True
+
+    if not _has_any(source, USER_TIME_SAVING_AMBIGUOUS_KEYWORDS):
+        return False
+
+    has_product = _has_any(source, USER_TIME_SAVING_PRODUCT_CONTEXT)
+    has_personal = _has_any(source, USER_TIME_SAVING_PERSONAL_CONTEXT)
+
+    # 제품·절차 맥락이 있고 개인 생활 맥락만으로 설명되지 않을 때 태깅.
+    if has_product and not has_personal:
+        return True
+    if has_product and has_personal:
+        # 둘 다 있으면 제품/절차 신호가 자기관리보다 구체적인지 본다.
+        # "사용자/앱/절차/서류" 등 강한 제품 신호가 있으면 채택.
+        strong_product = (
+            "사용자",
+            "앱",
+            "서비스",
+            "제품",
+            "절차",
+            "서류",
+            "미니앱",
+            "광고",
+            "일을 줄이",
+            "사람들의 일",
+        )
+        return _has_any(source, strong_product)
+    return False
+
+
 def detect_value_tags(source_text: str) -> list[str]:
     """반복 가능한 가치 판단을 value_tags로 추출."""
     source = _normalize_text(source_text)
     found: list[str] = []
     for tag, keywords in VALUE_TAG_KEYWORDS.items():
+        if tag == "사용자 시간 절약":
+            if is_user_time_saving_value(source) and tag not in found:
+                found.append(tag)
+            continue
         if any(keyword in source for keyword in keywords) and tag not in found:
             found.append(tag)
     return found
@@ -424,6 +551,35 @@ def enforce_consistency(draft: dict, source_text: str) -> dict:
     return result
 
 
+def parse_excluded_value_tags(edit_instruction: str) -> list[str]:
+    """수정 요청에서 삭제·제외할 value_tags를 추출한다."""
+    if not edit_instruction.strip():
+        return []
+
+    text = edit_instruction.strip()
+    text_lower = text.lower()
+    removal_intent = bool(
+        re.search(
+            r"삭제|제거|빼|지워|없애|제외|맞지\s*않|적절하지\s*않|관련\s*없",
+            text,
+        )
+    )
+    mentions_value_tags_field = bool(
+        re.search(r"value[_\s-]?tags?|가치관\s*태그|가치\s*태그", text_lower)
+    )
+
+    excluded: list[str] = []
+    for tag, aliases in VALUE_TAG_ALIASES.items():
+        mentioned = any(alias.lower() in text_lower for alias in aliases)
+        if not mentioned:
+            continue
+        # 태그명이 명시되고 삭제 의이 있거나, value_tags 필드 수정 맥락이면 제외.
+        if removal_intent or mentions_value_tags_field:
+            if tag not in excluded:
+                excluded.append(tag)
+    return excluded
+
+
 def parse_edit_checklist(edit_instruction: str) -> dict[str, object]:
     """사용자 수정 요청에서 기대 필드 변경을 추출한다."""
     text = edit_instruction.strip().lower()
@@ -453,6 +609,10 @@ def parse_edit_checklist(edit_instruction: str) -> dict[str, object]:
     if re.search(r"reflection[_\s-]?seed|장기\s*패턴|reflection\s*seed", text):
         if re.search(r"true|후보|표시|candidate", text):
             expectations["reflection_seed_candidate"] = True
+
+    excluded_tags = parse_excluded_value_tags(edit_instruction)
+    if excluded_tags:
+        expectations["exclude_value_tags"] = excluded_tags
 
     return expectations
 
@@ -506,6 +666,16 @@ def verify_edit_requests(
     ):
         unfulfilled.append("reflection_seed_candidate 수정 미완료 (기대: true)")
 
+    excluded_tags = list(expectations.get("exclude_value_tags") or [])
+    if excluded_tags:
+        actual_tags = list(after.get("value_tags") or [])
+        still_present = [tag for tag in excluded_tags if tag in actual_tags]
+        if still_present:
+            unfulfilled.append(
+                "value_tags 삭제 미완료 (기대 제외: "
+                f"{', '.join(excluded_tags)}, 잔존: {', '.join(still_present)})"
+            )
+
     return unfulfilled
 
 
@@ -542,6 +712,12 @@ def apply_edit_patches(
     if expectations.get("reflection_seed_candidate"):
         result["reflection_seed_candidate"] = True
 
+    excluded_tags = list(expectations.get("exclude_value_tags") or [])
+    if excluded_tags:
+        result["value_tags"] = [
+            tag for tag in list(result.get("value_tags") or []) if tag not in excluded_tags
+        ]
+
     return enforce_consistency(result, source_text)
 
 
@@ -555,21 +731,32 @@ def assess_interpretation_risk(draft: dict, source_text: str) -> str:
     return "low"
 
 
-def validate_draft(draft: dict, source_text: str) -> dict:
+def validate_draft(
+    draft: dict,
+    source_text: str,
+    *,
+    excluded_value_tags: list[str] | None = None,
+) -> dict:
     """후처리: unsupported_inferences 보강 및 interpretation_risk 재평가.
 
     추가로 가치관 태그, 프로젝트 엔티티, 시제, reflection_seed 후보를 보강한다.
+    excluded_value_tags가 있으면 해당 태그는 병합·유지하지 않는다 (수정 요청 반영).
     """
     unsupported = detect_unsupported_inferences(draft, source_text)
     risk = assess_interpretation_risk(draft, source_text)
+    excluded = set(excluded_value_tags or [])
 
     validated = dict(draft)
     validated["unsupported_inferences"] = unsupported
     validated["interpretation_risk"] = risk
 
-    # 가치관 태그 병합 (원문 근거 있는 것만).
-    value_tags = list(validated.get("value_tags") or [])
+    # 가치관 태그 병합 (원문 근거 있는 것만). 사용자가 제외한 태그는 재주입하지 않는다.
+    value_tags = [
+        tag for tag in list(validated.get("value_tags") or []) if tag not in excluded
+    ]
     for tag in detect_value_tags(source_text):
+        if tag in excluded:
+            continue
         if tag not in value_tags:
             value_tags.append(tag)
     validated["value_tags"] = value_tags
