@@ -6,11 +6,24 @@
 - 0단계 평가 기반 정리 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
 - 1단계 기억 기질 품질 — `passed` (근거: 105개 기억 및 사용자 직접 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
 - 3단계 Reporter 후보 발견 — `passed` (근거: 20개 후보 사용자 전수 검토, `data/evaluation/reporter_poc_2026-07-11.json`, 2026-07-11)
-- 현재 검증 단계: **4단계 Style Editor 후킹/재미 — `not_started`**
-- 다음 검증 행동: `interesting=true`와 `revisit=true`를 모두 받은 Reporter 후보 중 상위 10개를 선정하고, 각 후보의 사실형·관찰형·후킹형 문장 3종을 한 후보씩 사용자에게 평가받는다.
+- 현재 검증 단계: **4단계 Style Editor 후킹/재미 — `conditional_pass`** (근거: 10개 후보 사용자 전수 검토, 관찰형·후킹형 선호 9/10, 최종 `too_much` 0/10, `taste_fit=high|medium` 9/10, `data/evaluation/style_editor_poc_2026-07-11.json`, 2026-07-11)
+- 다음 검증 행동: Style Editor에서 `keep` 판정을 받은 후보 중 5개를 선정해 5단계 Editor 근거·반례 수동 POC를 진행한다.
 - 진입 제한: 후보는 low-risk, current schema, primary evidence 보유, `reflection_value` medium/high 기억을 우선 사용하며 아직 사용자에게 발행하지 않는다.
 
 이 블록은 검증 진도의 단일 요약이다. 새 증거가 생기면 상태, 근거, 날짜, 다음 검증 행동을 함께 갱신하며 다음 검증 행동은 항상 하나만 유지한다.
+
+### 2026-07-11 Style Editor 수동 POC 결과
+
+- Reporter 후보 선정 및 사용자 검토: 10개
+- 사실형보다 관찰형 또는 후킹형이 선택된 후보: 9개 (90%)
+- 최종 문장 `too_much=true`: 0개 (0%)
+- `taste_fit=high|medium`: 9개 (90%)
+- 사용자가 실제로 재미 또는 웃음을 확인한 후보: 2개
+- 운영 판정: keep 9개, postpone 1개
+- 확인된 실패: 직관적이지 않은 비유, 긴 호흡과 과도한 설명, 근거 제한 문구로 약해진 후킹
+- 보류 후보: 예상 밖의 발견 후보는 두 장면만으로 일반화를 피하면 문장이 구구절절해져 추가 근거가 쌓일 때까지 `postpone`
+- 4단계 판정: `conditional_pass` — 선호, 과장 억제, 취향 적합성의 핵심 기준은 통과했으나 `HOOK_TOO_FLAT` 피드백이 다음 라운드에서 감소하는지는 아직 확인할 수 없다.
+- 근거 기록: `data/evaluation/style_editor_poc_2026-07-11.json`
 
 ### 2026-07-11 Reporter POC 시작 증거
 

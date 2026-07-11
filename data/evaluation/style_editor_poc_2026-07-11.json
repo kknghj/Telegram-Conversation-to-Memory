@@ -1,0 +1,324 @@
+{
+  "poc_id": "style-editor-poc-2026-07-11",
+  "started_at": "2026-07-11",
+  "status": "conditional_pass",
+  "source_poc_id": "reporter-poc-2026-07-11",
+  "target_candidate_count": 10,
+  "reviewed_candidate_count": 10,
+  "selection_policy": "Reporter 후보 중 interesting=true, revisit=true, evidence=sufficient를 충족하고 postpone이 아닌 후보를 우선하며, 사용자 수정 방향을 반영한다.",
+  "selected_candidate_ids": [
+    "reporter-001",
+    "reporter-004",
+    "reporter-005",
+    "reporter-007",
+    "reporter-010",
+    "reporter-011",
+    "reporter-013",
+    "reporter-014",
+    "reporter-016",
+    "reporter-017"
+  ],
+  "result_summary": {
+    "reviewed_candidate_count": 10,
+    "observational_or_hook_preferred_count": 9,
+    "observational_or_hook_preferred_rate": 0.9,
+    "final_too_much_count": 0,
+    "final_too_much_rate": 0.0,
+    "taste_fit_high_or_medium_count": 9,
+    "taste_fit_high_or_medium_rate": 0.9,
+    "fun_true_count": 2,
+    "keep_count": 9,
+    "postpone_count": 1,
+    "core_thresholds_met": true,
+    "unverified_longitudinal_criterion": "HOOK_TOO_FLAT 피드백이 다음 라운드에서 감소하는지는 첫 Style Editor 라운드만으로 확인할 수 없다.",
+    "decision": "conditional_pass",
+    "decision_reason": "선호, 과장 억제, 취향 적합성의 핵심 정량 기준은 통과했다. 다만 다음 라운드 실패 감소 기준은 아직 검증할 수 없어 conditional_pass로 판정한다."
+  },
+  "style_learnings": [
+    "알림에는 짧고 직관적인 후킹형을, 본문에는 근거를 연결하는 관찰형과 사실형을 배치할 수 있다.",
+    "관찰형도 별도 설명 없이 호기심을 만들면 알림 첫 문장으로 사용할 수 있다.",
+    "원문 표현을 그대로 반복하기보다 의미의 경계를 보존한 새로운 표현을 선호한다.",
+    "대칭적인 비유보다 의미가 즉시 이해되는 인과 표현을 선호한다.",
+    "근거 부족을 막기 위한 제한 문구가 문장을 구구절절하게 만들면 후보를 보류한다.",
+    "좋은 핵심 관찰은 발전 서사로 묶지 않고 짧게 독립시키는 편이 낫다.",
+    "재미있는 단일 장면은 일반화하지 않고 그 장면 자체의 정확한 수치와 대비를 살린다."
+  ],
+  "items": [
+    {
+      "item_id": "style-editor-001",
+      "source_candidate_id": "reporter-001",
+      "status": "reviewed",
+      "source_distinction": "사람의 부담을 줄이는 서비스를 반드시 만들겠다는 주장보다, 관심과 수익을 위해 사용자의 여유를 소모하는 서비스를 만들고 싶지 않다는 경계가 더 정확하다.",
+      "variants": {
+        "factual": "더 빠른 반응과 더 큰 수익을 기대할 수 있어도, 사용자를 오래 붙잡고 불안을 키우는 서비스는 만들고 싶지 않았다.",
+        "observational": "무엇을 만들지보다 무엇을 만들지 않을지가 더 선명했다. 관심과 수익을 위해 사용자의 여유를 대가로 삼고 싶지는 않았다.",
+        "hook": "사람을 붙잡아야 돈이 되는 서비스라면, 잘되는 것부터가 마음에 들지 않았다."
+      },
+      "user_evaluation": {
+        "preferred_variants": [
+          "observational",
+          "hook"
+        ],
+        "placement": {
+          "hook": "notification",
+          "observational": "body"
+        },
+        "accuracy": "correct_after_revision",
+        "interesting": true,
+        "fun": null,
+        "revisit": null,
+        "taste_fit": "high",
+        "too_much": false,
+        "action": "keep",
+        "failure_type": null,
+        "user_comment": "후킹형은 메시지 알림에서 가장 먼저 보는 문장, 관찰형은 본문 문장으로 쓰면 좋다. 원문의 '시간과 마음을 낭비한다'는 표현은 그대로 반복하지 않고 다른 방식으로 표현하는 편이 좋다."
+      }
+    },
+    {
+      "item_id": "style-editor-002",
+      "source_candidate_id": "reporter-004",
+      "status": "reviewed",
+      "scope_constraint": "초혜언니와의 구체적 관계에 한정하며, 혼자 쉬는 것과 사람을 만나 얻는 생기를 서로 대체 관계로 일반화하지 않는다.",
+      "variants": {
+        "factual": "혼자 쉬는 것을 좋아하지만, 초혜언니와 자주 만나던 시기에는 많이 웃고 산책과 러닝 같은 새로운 활동도 시작했다.",
+        "observational": "혼자 쉬는 시간이 익숙했던 생활에, 초혜언니는 웃음뿐 아니라 산책과 러닝처럼 전에 없던 움직임을 가져왔다.",
+        "hook_initial": "혼자 있어야 쉬는 줄 알았는데, 초혜언니와 함께한 날에는 오히려 생활이 움직이기 시작했다.",
+        "hook_revised": "혼자 쉬는 건 여전히 좋았다. 다만 초혜언니와 자주 만난 시기에는, 쉬는 것만으로는 생기지 않던 웃음과 움직임이 생겼다."
+      },
+      "user_evaluation": {
+        "preferred_variant": "hook_revised",
+        "accuracy": "correct_after_revision",
+        "interesting": true,
+        "fun": null,
+        "revisit": null,
+        "taste_fit": "high",
+        "too_much": false,
+        "action": "keep",
+        "failure_type": "HOOK_TOO_MUCH",
+        "user_comment": "처음 후킹형의 '혼자 있어야 쉬는 줄 알았다'는 조금 과장됐다. 보통 혼자 있는 것이 쉬는 것이지만, 사람을 너무 오래 만나지 않으면 피폐해질 때도 있다. 수정 문장은 실제 경험에 더 정확하다."
+      }
+    },
+    {
+      "item_id": "style-editor-003",
+      "source_candidate_id": "reporter-005",
+      "status": "reviewed",
+      "scope_constraint": "눕기에 관한 보편적 규칙이 아니라 기록에 남은 두 장면의 대비로만 표현한다.",
+      "variants": {
+        "factual": "불안해서 아무것도 하지 못한 채 누운 날에는 한심함이 남았고, 러닝을 마치고 누운 날에는 하루를 잘 보냈다는 개운함이 남았다.",
+        "observational": "같은 휴식도 그전에 무엇을 했는지에 따라 다르게 읽혔다. 불안 끝의 눕기는 자책이 됐고, 러닝 끝의 눕기는 하루의 마침표가 됐다.",
+        "hook": "누워 있는 모습은 똑같았는데, 어떤 날의 나는 한심했고 어떤 날의 나는 하루를 잘 보냈다."
+      },
+      "user_evaluation": {
+        "preferred_variant": "observational",
+        "accuracy": "partial",
+        "interesting": true,
+        "fun": null,
+        "revisit": null,
+        "taste_fit": "high",
+        "too_much": false,
+        "action": "keep",
+        "failure_type": null,
+        "user_comment": "실제로는 누워 있으면서 아무 생각이 없는 날도 있으므로 일반 규칙은 아니다. 다만 기록된 두 장면을 대비하는 표현으로는 괜찮다."
+      }
+    },
+    {
+      "item_id": "style-editor-004",
+      "source_candidate_id": "reporter-007",
+      "status": "reviewed",
+      "scope_constraint": "모든 불안의 원인을 불확실성으로 일반화하지 않고 업무 방향과 승진 시점에 관한 두 장면으로 제한한다.",
+      "variants": {
+        "factual": "업무 방향이 정해지지 않았을 때는 불안했지만 결정 뒤에는 집중이 돌아왔고, 승진도 시점이 확정된다면 늦더라도 지금처럼 불안하지는 않을 것이라고 했다.",
+        "observational": "서로 다른 두 장면에서 불안을 키운 것은 불리한 결과 자체보다, 언제 어떻게 결정될지 모르는 시간이었다.",
+        "hook": "5년 뒤라는 답보다, 답이 없는 오늘이 더 불안했다."
+      },
+      "user_evaluation": {
+        "preferred_variants": [
+          "observational",
+          "hook"
+        ],
+        "placement": {
+          "observational": [
+            "notification",
+            "body"
+          ],
+          "hook": "notification"
+        },
+        "accuracy": "correct",
+        "interesting": true,
+        "fun": null,
+        "revisit": null,
+        "taste_fit": "high",
+        "too_much": false,
+        "action": "keep",
+        "failure_type": null,
+        "user_comment": "관찰형과 후킹형 모두 마음에 든다. 후보 1처럼 후킹형을 알림, 관찰형을 본문에 둘 수 있지만 이번 관찰형은 그 자체로도 알림 첫 문장에 적합하다."
+      }
+    },
+    {
+      "item_id": "style-editor-005",
+      "source_candidate_id": "reporter-010",
+      "status": "reviewed",
+      "variants": {
+        "factual": "과거처럼 중간에 포기하고 싶지 않은 마음과 결과를 직접 보고 싶은 궁금증이 프로젝트를 계속하게 했지만, 반복되는 테스트와 수정은 조급함도 만들었다.",
+        "observational": "끝을 보고 싶은 마음은 프로젝트를 지속하는 힘이면서, 완성까지 남은 시간을 견디기 어렵게 만드는 조급함이기도 했다.",
+        "hook_initial": "끝을 보고 싶은 마음은 프로젝트를 붙잡는 손이면서, 동시에 등을 떠미는 손이었다.",
+        "hook_revised": "끝을 보고 싶은 마음은 프로젝트를 놓지 않게 했고, 아직 끝나지 않았다는 사실로 나를 재촉했다."
+      },
+      "user_evaluation": {
+        "preferred_variant": "observational",
+        "acceptable_alternative": "hook_revised",
+        "accuracy": "correct",
+        "interesting": true,
+        "fun": null,
+        "revisit": null,
+        "taste_fit": "high",
+        "too_much": false,
+        "action": "keep",
+        "failure_type": "TASTE_MISMATCH",
+        "user_comment": "관찰형이 좋다. 처음 후킹형의 '프로젝트를 붙잡는 손'은 이해되지만 '등을 떠미는 손'은 직관적이지 않았다. 수정 후킹형은 의미가 훨씬 잘 이해된다.",
+        "style_signal": "대칭적인 비유보다 의미가 즉시 이해되는 인과 표현을 선호한다."
+      }
+    },
+    {
+      "item_id": "style-editor-006",
+      "source_candidate_id": "reporter-011",
+      "status": "reviewed",
+      "variants": {
+        "factual": "AI는 코딩 학습의 장벽을 낮춰 직접 결과물을 만들게 했고, 사람의 거절이나 상처를 걱정하지 않고 편하게 지시할 수 있는 상대이기도 했다.",
+        "observational": "AI가 바꾼 것은 작업 속도만이 아니었다. 소비자로 머물렀을 사람에게 만드는 재미를 열어주고, 지시할 때 타인의 반응을 걱정하던 부담도 없앴다.",
+        "hook": "코딩을 배우기 전에, 만드는 사람이 되는 법부터 AI에게 배웠다."
+      },
+      "user_evaluation": {
+        "preferred_variants": [
+          "factual",
+          "observational",
+          "hook"
+        ],
+        "placement": {
+          "hook": "notification",
+          "observational": "body",
+          "factual": "body"
+        },
+        "accuracy": "correct",
+        "interesting": true,
+        "fun": true,
+        "revisit": null,
+        "taste_fit": "high",
+        "too_much": false,
+        "action": "keep",
+        "failure_type": null,
+        "user_comment": "세 문장 모두 마음에 들며 후킹형은 특히 재미있다. 후킹형을 알림 첫 문장으로, 관찰형과 사실형을 본문 근거 문장으로 배치하는 구성이 적합하다."
+      }
+    },
+    {
+      "item_id": "style-editor-007",
+      "source_candidate_id": "reporter-013",
+      "status": "reviewed",
+      "variants": {
+        "factual": "제주에서는 우연히 발견한 카페가 더 기억에 남았고, 프로젝트에서는 AI와 이야기하다 발견한 예상 밖의 방법이 처음 계획을 바꿨다.",
+        "observational": "장소를 고를 때도 무언가를 만들 때도, 미리 고른 정답보다 예상 밖에서 발견한 가능성이 더 오래 남은 두 장면이 있었다.",
+        "hook": "계획은 목적지를 정했지만, 오래 남은 것은 두 번 모두 옆길에서 발견됐다."
+      },
+      "user_evaluation": {
+        "preferred_variants": [],
+        "accuracy": "partial",
+        "interesting": false,
+        "fun": false,
+        "revisit": true,
+        "taste_fit": "low",
+        "too_much": false,
+        "action": "postpone",
+        "failure_type": "DATA_INSUFFICIENT",
+        "secondary_failure_types": [
+          "HOOK_TOO_FLAT",
+          "TASTE_MISMATCH"
+        ],
+        "user_comment": "사실형과 관찰형은 한 문장으로 읽기에 호흡이 길어 의미가 바로 들어오지 않는다. 후킹형은 '두 번'으로 일반화를 막았지만 그 제한 때문에 후킹 기능이 약하고 구구절절하다. 비슷한 근거가 더 쌓인 뒤 새로 만드는 편이 좋다.",
+        "next_evidence_trigger": "계획 밖의 발견이 더 오래 남거나 실제 선택을 바꾼 장면이 추가로 기록되면 다시 생성한다."
+      }
+    },
+    {
+      "item_id": "style-editor-008",
+      "source_candidate_id": "reporter-014",
+      "status": "reviewed",
+      "scope_constraint": "독서 동기의 변화나 장기 패턴으로 확대하지 않고, 비슷한 주제의 책들이 서로의 이해를 도운 관찰만 남긴다.",
+      "variants": {
+        "factual": "이야기할 재료를 늘리려고 읽기 시작했지만, 한 달의 기록에는 다른 책 덕분에 이전 책을 더 잘 이해하고 다시 읽게 된 순간도 남았다.",
+        "observational_initial": "말할 거리를 늘리려던 독서는, 책들이 서로를 읽어주는 경험으로 조금씩 바뀌고 있었다.",
+        "observational_revised": "비슷한 주제의 책을 이어 읽자, 책들이 서로를 읽어주기 시작했다.",
+        "hook": "이야기 재료를 찾으려고 펼친 책들이, 나중에는 서로의 해설서가 됐다."
+      },
+      "user_evaluation": {
+        "preferred_variant": "observational_revised",
+        "accuracy": "correct_after_revision",
+        "interesting": true,
+        "fun": null,
+        "revisit": null,
+        "taste_fit": "high",
+        "too_much": false,
+        "action": "keep",
+        "failure_type": null,
+        "user_comment": "'책들이 서로를 읽어주는 경험'이라는 표현이 마음에 든다. 말할 거리를 늘리려고 읽었다는 동기와 책이 다음 책을 소개하는 경험을 굳이 이어 설명하지 않아도 된다. 연결을 덜어낸 수정 문장이 조금 더 낫다.",
+        "style_signal": "발전 서사를 만들기보다 좋은 핵심 관찰 하나를 짧게 독립시키는 문장을 선호한다."
+      }
+    },
+    {
+      "item_id": "style-editor-009",
+      "source_candidate_id": "reporter-016",
+      "status": "reviewed",
+      "scope_constraint": "고정된 가격 기준이나 소비 습관으로 일반화하지 않고 한 번의 비교에서 발견한 재미로만 다룬다.",
+      "variants": {
+        "factual": "7만 5천 원짜리 인형을 보며, 가챠 한 번이 9만 원이라는 이유로 살 만한 가격이라고 생각했다.",
+        "observational": "줄이고 싶었던 가챠 지출이, 다른 물건의 가격을 낮아 보이게 만드는 비교 기준으로 한 번 더 등장했다.",
+        "hook": "7만 5천 원짜리 인형을 싸 보이게 만드는 데는, 9만 원짜리 가챠 한 번이면 충분했다."
+      },
+      "user_evaluation": {
+        "preferred_variant": "hook",
+        "accuracy": "correct",
+        "interesting": true,
+        "fun": true,
+        "revisit": true,
+        "taste_fit": "high",
+        "too_much": false,
+        "action": "keep",
+        "failure_type": null,
+        "rejected_variant_failure": {
+          "variant": "observational",
+          "failure_type": "HOOK_TOO_FLAT",
+          "reason": "설명이 구구절절해져 원래 장면의 즉각적인 재미를 약화했다."
+        },
+        "user_comment": "관찰형은 너무 구구절절하다. 후킹형이 딱 맞고 실제로 조금 웃겼다."
+      }
+    },
+    {
+      "item_id": "style-editor-010",
+      "source_candidate_id": "reporter-017",
+      "status": "reviewed",
+      "scope_constraint": "본업 전체에 대한 성향으로 결론내리지 않고, 사무실 피로와 본업의 흥미를 분리해 관찰할 수 있는 한 사례로 둔다.",
+      "variants": {
+        "factual": "사무실과 조직의 일에는 강한 피로를 느꼈지만, 추첨제 문제가 풀린 날에는 본업에 집중한 것이 기분 좋았다.",
+        "observational": "사무실에 대한 피로와 별개로, 방해가 줄고 본업이 앞으로 나가는 감각까지 싫었던 것은 아니었다.",
+        "hook": "사무실을 싫어하는 것과 본업을 싫어하는 것은, 아직 같은 말이 아니었다."
+      },
+      "user_evaluation": {
+        "preferred_variants": [
+          "observational",
+          "hook"
+        ],
+        "placement": {
+          "hook": "notification",
+          "observational": "body"
+        },
+        "accuracy": "correct",
+        "interesting": true,
+        "fun": null,
+        "revisit": true,
+        "taste_fit": "high",
+        "too_much": false,
+        "action": "keep",
+        "failure_type": null,
+        "user_comment": "관찰형과 후킹형 모두 좋다. 알림 첫 문장에는 후킹형이 더 적합하다."
+      }
+    }
+  ]
+}
