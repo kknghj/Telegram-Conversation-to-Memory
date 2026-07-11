@@ -5,11 +5,30 @@
 - 기준일: 2026-07-11
 - 0단계 평가 기반 정리 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
 - 1단계 기억 기질 품질 — `passed` (근거: 105개 기억 및 사용자 직접 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
-- 현재 검증 단계: **3단계 Reporter 후보 발견 — `in_progress`**
-- 다음 검증 행동: Reporter 후보 20개를 만들고 `accepted` / `revise` / `discard` 사용자 평가를 기록한다.
+- 3단계 Reporter 후보 발견 — `passed` (근거: 20개 후보 사용자 전수 검토, `data/evaluation/reporter_poc_2026-07-11.json`, 2026-07-11)
+- 현재 검증 단계: **4단계 Style Editor 후킹/재미 — `not_started`**
+- 다음 검증 행동: `interesting=true`와 `revisit=true`를 모두 받은 Reporter 후보 중 상위 10개를 선정하고, 각 후보의 사실형·관찰형·후킹형 문장 3종을 한 후보씩 사용자에게 평가받는다.
 - 진입 제한: 후보는 low-risk, current schema, primary evidence 보유, `reflection_value` medium/high 기억을 우선 사용하며 아직 사용자에게 발행하지 않는다.
 
 이 블록은 검증 진도의 단일 요약이다. 새 증거가 생기면 상태, 근거, 날짜, 다음 검증 행동을 함께 갱신하며 다음 검증 행동은 항상 하나만 유지한다.
+
+### 2026-07-11 Reporter POC 시작 증거
+
+- Supabase 승인 기억: 112개
+- `schema_version=2`: 112개
+- Reporter 자동 진입 기준 충족: 67개
+- 위험도 분포: low 101개, medium 10개, high 1개
+- 회고가치 분포: low 26개, medium 77개, high 9개
+- 생성 및 사용자 검토 완료: 20개
+- 사용자 Reporter 판정: accepted 16개, revise 4개, discard 0개
+- `accuracy=correct|partial`: 19개
+- `interesting=true`: 16개
+- `revisit=true`: 19개
+- 운영 판정: keep 10개, revise 7개, postpone 2개, discard 1개
+- 실패 유형: `BORING_BUT_TRUE` 2개, `OVER_GENERALIZATION` 1개, `DATA_INSUFFICIENT` 2개, `OBVIOUS_INSIGHT` 1개
+- `fun=true`: 1개, `FUN_BUT_UNGROUNDED`: 0개
+- 3단계 판정: `passed` — 정확성·흥미·재독 기준을 모두 충족했고 일반화 위험 후보는 수정·보류·폐기로 격리했다.
+- 근거 기록: `data/evaluation/reporter_poc_2026-07-11.json`
 
 ## 목적
 

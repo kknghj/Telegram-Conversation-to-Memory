@@ -3,12 +3,13 @@
 ## 진행 상태
 
 - 기준일: 2026-07-11
-- 현재 구현 마일스톤: **Phase 3 Reporter POC — `in_progress`**
-- 다음 구현 목표: 검증 가능한 콘텐츠 후보 20개를 생성하고 각 후보를 원문 기억 ID, 연결 유형, 흥미 포인트, 불확실성과 함께 기록한다.
+- 현재 구현 마일스톤: **Phase 4 Style Editor POC — `not_started`**
+- 다음 구현 목표: Reporter POC에서 `interesting=true`와 `revisit=true`를 모두 받은 후보 중 상위 10개를 선정하고, 후보마다 사실형·관찰형·후킹형 문장 3종을 생성한다.
 - 선행 상태:
   - Phase 0 기억 아카이브 안정화 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
   - Phase 1 기억 기질 고도화 — `passed` (근거: 105개 기억의 schema v2 및 핵심 근거 필드 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
   - Phase 2 회고 씨앗 수집 — `in_progress` (후속 질문과 장기 분석 필드는 운영 중이나 신규 기억에서의 안정적 축적을 계속 검증해야 함)
+  - Phase 3 Reporter POC — `passed` (근거: 112개 기억에서 후보 20개 생성 및 사용자 전수 검토, `data/evaluation/reporter_poc_2026-07-11.json`, 2026-07-11)
 - 완료 판단 원칙: 구현과 검증이 모두 끝난 항목만 `passed`로 표시한다.
 
 이 블록은 구현 진도의 단일 요약이다. 상태가 바뀌면 근거와 날짜를 함께 갱신하고, 현재 구현 마일스톤은 항상 하나만 유지한다.
