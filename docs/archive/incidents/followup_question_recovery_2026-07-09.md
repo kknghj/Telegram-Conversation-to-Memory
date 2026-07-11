@@ -1,5 +1,7 @@
 # Follow-up Question Recovery - 2026-07-09
 
+> 상태: `superseded` — 2026-07-09 후속 질문 회귀와 복구 조치를 남긴 사건 기록입니다. 현행 질문 정책은 `../../question_strategy.md`를 따릅니다. 격리일: 2026-07-11.
+
 ## 배경
 
 Supabase `memories`에는 105개 기억이 쌓였지만, 90개 이후 신규/live 기억에서 후속 질문이 나오지 않는 현상이 관찰되었다.

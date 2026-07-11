@@ -413,7 +413,7 @@ Reporter 후보 상태별 분포는 다음과 같다.
 | `memory_type=reflection_seed` | 20 |
 | `reflection_value=high` | 9 |
 
-관련 문서: `docs/backfill_batch_1_proposal.md`
+관련 문서: `docs/archive/operations/backfill_batch_1_proposal.md`
 
 ---
 

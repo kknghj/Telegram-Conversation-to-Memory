@@ -1,5 +1,7 @@
 # Memory Schema Migration 설계
 
+> 상태: `superseded` — 구현과 검증이 완료된 스키마 마이그레이션의 과거 설계 기록입니다. 현행 저장 구조는 `../../architecture.md`, 검증 결과는 `../../validation_stage_0_1_decisions.md`를 따릅니다. 격리일: 2026-07-11.
+
 회고 retrieval 신뢰도 향상과 "근거 기반 해설가" 원칙 보호를 위한 마이그레이션 설계 문서.
 
 **현재 상태 (2026-06-16 기준, 36건)**

@@ -1,0 +1,9 @@
+2026-07-09 23:37:58,514 INFO WOULD_INSERT | C:\Users\Heeju\AppData\Local\Temp\pytest-of-Heeju\pytest-40\test_dry_run_does_not_insert0\one.json | - | faf40705192e8f3dd7a622ae83f411cf0ba6be7393c799f91b962fb3156b043c
+2026-07-09 23:37:58,530 INFO INVALID | C:\Users\Heeju\AppData\Local\Temp\pytest-of-Heeju\pytest-40\test_dry_run_summary_counts0\invalid.json | approved is not true | -
+2026-07-09 23:37:58,532 INFO WOULD_INSERT | C:\Users\Heeju\AppData\Local\Temp\pytest-of-Heeju\pytest-40\test_dry_run_summary_counts0\valid.json | - | faf40705192e8f3dd7a622ae83f411cf0ba6be7393c799f91b962fb3156b043c
+2026-07-09 23:37:58,547 INFO INSERTED | C:\Users\Heeju\AppData\Local\Temp\pytest-of-Heeju\pytest-40\test_apply_inserts_valid_memor0\one.json | - | faf40705192e8f3dd7a622ae83f411cf0ba6be7393c799f91b962fb3156b043c
+2026-07-09 23:37:58,569 INFO SKIPPED | C:\Users\Heeju\AppData\Local\Temp\pytest-of-Heeju\pytest-40\test_apply_skips_duplicate0\one.json | source_hash exists in Supabase | faf40705192e8f3dd7a622ae83f411cf0ba6be7393c799f91b962fb3156b043c
+2026-07-09 23:37:58,592 INFO INVALID | C:\Users\Heeju\AppData\Local\Temp\pytest-of-Heeju\pytest-40\test_invalid_json_does_not_sto0\broken.json | JSON parse error: Expecting property name enclosed in double quotes: line 1 column 2 (char 1) | -
+2026-07-09 23:37:58,596 INFO INSERTED | C:\Users\Heeju\AppData\Local\Temp\pytest-of-Heeju\pytest-40\test_invalid_json_does_not_sto0\good.json | - | faf40705192e8f3dd7a622ae83f411cf0ba6be7393c799f91b962fb3156b043c
+2026-07-09 23:37:58,622 INFO FAILED | C:\Users\Heeju\AppData\Local\Temp\pytest-of-Heeju\pytest-40\test_insert_failure_continues0\fail.json | network down | 5fc774bac09c5a655a8150228c1d5081edf2131120fe8ba7cb4e487d02df5cec
+2026-07-09 23:37:58,627 INFO INSERTED | C:\Users\Heeju\AppData\Local\Temp\pytest-of-Heeju\pytest-40\test_insert_failure_continues0\ok.json | - | 960a4fa7e523636b91eb42eec2eff01586c32a217418df9f93aa4f1b7c161722

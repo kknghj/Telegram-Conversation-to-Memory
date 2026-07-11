@@ -1,5 +1,7 @@
 # Question Strategy: Complete but Expandable
 
+> 상태: `superseded` — `complete_but_expandable` 도입 당시의 결정 기록입니다. 현행 질문 정책은 `../../question_strategy.md`를 따릅니다. 격리일: 2026-07-11.
+
 ## 목적
 
 이 문서는 `docs/question_strategy.md`의 보충 기준이다.

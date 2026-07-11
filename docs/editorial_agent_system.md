@@ -227,7 +227,7 @@ ready_to_publish
 - `vision.md`: 이 시스템이 왜 필요한지 설명하는 최상위 제품 철학.
 - `future_roadmap.md`: 현재 MVP에서 이 시스템으로 가는 단계적 경로.
 - `architecture.md`: 현재 Telegram 기반 기억 아카이브의 실제 구조.
-- `reflection_agent_change_plan.md`: 질문 분리와 회고 씨앗 수집을 위한 중간 단계 설계.
+- `archive/plans/reflection_agent_change_plan.md`: 질문 분리와 회고 씨앗 수집을 위해 사용한 과거 중간 단계 설계.
 - `question_strategy.md`: Reporter 이전 단계에서 좋은 기억 재료를 남기기 위한 질문 전략.
 - `PROMPT_POLICY.md`: Archivist와 Editor가 공유해야 할 원문 충실도 기준.
 

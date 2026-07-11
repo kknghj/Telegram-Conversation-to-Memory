@@ -162,7 +162,7 @@ emerging_themes ≥ 2
 ### 3.2 meaning_check 억제 규칙 (코드·프롬프트 공통)
 
 ```python
-# 개념적 의사코드 — 구현은 reflection_agent_change_plan.md 참고
+# 개념적 의사코드 — 과거 구현 계획은 archive/plans/reflection_agent_change_plan.md 참고
 
 def can_use_meaning_check(session: QuestionSession) -> bool:
     if session.meaning_check_count >= 1:

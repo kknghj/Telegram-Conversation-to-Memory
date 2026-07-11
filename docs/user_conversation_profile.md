@@ -176,7 +176,7 @@
 | 문서 | 역할 |
 |------|------|
 | `question_strategy.md` | 질문 유형별 규칙·예시·제한 |
-| `reflection_agent_change_plan.md` | 구현 분리·스키마·MVP 범위 |
+| `archive/plans/reflection_agent_change_plan.md` | 구현 분리·스키마·MVP 범위에 관한 과거 계획 기록 |
 | `PROMPT_POLICY.md` | 원문 충실·금지 표현 (변경 시 보완) |
 | `vision.md` | 제품 경계 — 상담사·코치 아님 |
 

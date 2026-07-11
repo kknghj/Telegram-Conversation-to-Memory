@@ -1,5 +1,7 @@
 # Reflection Agent — Change Plan
 
+> 상태: `superseded` — 질문 생성 분리와 회고 씨앗 수집을 위한 과거 구현 계획입니다. 현행 제품 방향과 진행상태는 `../../future_roadmap.md`, 검증 기준은 `../../validation_plan.md`, 질문 정책은 `../../question_strategy.md`를 따릅니다. 격리일: 2026-07-11.
+
 단순 요약봇에서 **회고형 대화 에이전트**로 발전시키기 위한 설계·변경 계획이다.  
 이 문서는 **구현 전 설계**이며, 코드 변경은 이 계획 승인 후 단계적으로 진행한다.
 
@@ -360,7 +362,7 @@ REFLECTION_ALLOW_MEANING_CHECK=true
 |------|----|----|
 | `docs/user_conversation_profile.md` | ✅ 작성 | 유지 |
 | `docs/question_strategy.md` | ✅ 작성 | 유지 |
-| `docs/reflection_agent_change_plan.md` | ✅ 작성 | 갱신 |
+| `docs/archive/plans/reflection_agent_change_plan.md` | ✅ archive 보관 | 현행 지침으로 갱신하지 않음 |
 | `prompts/question_generation_prompt.txt` | 신규 | 개정 |
 | `prompts/memory_archive_system_prompt.txt` | 개정 | 개정 |
 | `memory/question.py` | 신규 | 확장 |

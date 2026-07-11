@@ -1,5 +1,7 @@
 # Backfill Batch 1 Proposal
 
+> 상태: `superseded` — 사용자 승인과 Supabase 반영이 끝난 일회성 운영 기록입니다. 검증 결론은 `../../validation_stage_0_1_decisions.md`를 따릅니다. 격리일: 2026-07-11.
+
 작성일: 2026-07-09  
 상태: 사용자 승인 후 Supabase 반영 완료
 
