@@ -6,11 +6,29 @@
 - 0단계 평가 기반 정리 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
 - 1단계 기억 기질 품질 — `passed` (근거: 105개 기억 및 사용자 직접 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
 - 3단계 Reporter 후보 발견 — `passed` (근거: 20개 후보 사용자 전수 검토, `data/evaluation/reporter_poc_2026-07-11.json`, 2026-07-11)
-- 현재 검증 단계: **4단계 Style Editor 후킹/재미 — `conditional_pass`** (근거: 10개 후보 사용자 전수 검토, 관찰형·후킹형 선호 9/10, 최종 `too_much` 0/10, `taste_fit=high|medium` 9/10, `data/evaluation/style_editor_poc_2026-07-11.json`, 2026-07-11)
-- 다음 검증 행동: Style Editor에서 `keep` 판정을 받은 후보 중 5개를 선정해 5단계 Editor 근거·반례 수동 POC를 진행한다.
+- 4단계 Style Editor 후킹/재미 — `conditional_pass` (근거: 10개 후보 사용자 전수 검토, 관찰형·후킹형 선호 9/10, 최종 `too_much` 0/10, `taste_fit=high|medium` 9/10, `data/evaluation/style_editor_poc_2026-07-11.json`, 2026-07-11. 다음 라운드의 `HOOK_TOO_FLAT` 감소 여부는 미검증)
+- 현재 검증 단계: **5단계 Editor 근거·반례 — `conditional_pass`** (근거: 5개 후보 사용자 전수 검토, `ready_for_draft` 3개·`needs_more_evidence` 2개, `data/evaluation/editor_poc_2026-07-11.json`, 2026-07-11)
+- 다음 검증 행동: 같은 근거·반례 형식으로 Editor 후보 15개를 추가 검토해 최소 표본 20개를 채운다.
 - 진입 제한: 후보는 low-risk, current schema, primary evidence 보유, `reflection_value` medium/high 기억을 우선 사용하며 아직 사용자에게 발행하지 않는다.
 
 이 블록은 검증 진도의 단일 요약이다. 새 증거가 생기면 상태, 근거, 날짜, 다음 검증 행동을 함께 갱신하며 다음 검증 행동은 항상 하나만 유지한다.
+
+### 2026-07-11 Editor 근거·반례 수동 POC 중간 결과
+
+- 사용자 직접 검토: 5개
+- `ready_for_draft`: 3개
+- `ready_for_draft` 중 추가 근거가 쌓일 때까지 `maturation_hold`: 2개
+- 즉시 내부 초안화 가능: 1개
+- `needs_more_evidence`: 2개
+- 보류 또는 폐기 비율: 40%
+- ready 후보 중 근거 기억 2개 이상: 3/3 (100%)
+- 확인된 편집 경계:
+  - 편의성 발언과 제품 윤리 발언을 곧바로 하나의 가치관으로 합치지 않는다.
+  - 불안 감소의 원인을 불확실성 해소 하나로 고정하지 않는다.
+  - 비슷한 책의 연결은 현재 읽는 장르와 알림 시점이 맞지 않으면 보류한다.
+  - 업무 진척의 만족을 본업 선호로 확대하지 않는다.
+- 5단계 판정: `conditional_pass` — 보류율과 근거 수 기준은 충족했으나 최소 검증 단위 20개 중 5개만 검토했다.
+- 근거 기록: `data/evaluation/editor_poc_2026-07-11.json`
 
 ### 2026-07-11 Style Editor 수동 POC 결과
 

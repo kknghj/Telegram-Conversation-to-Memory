@@ -3,14 +3,15 @@
 ## 진행 상태
 
 - 기준일: 2026-07-11
-- 현재 구현 마일스톤: **Phase 4 Style Editor POC — `conditional_pass`** (근거: 10개 후보 사용자 전수 검토 및 핵심 정량 기준 통과, `data/evaluation/style_editor_poc_2026-07-11.json`, 2026-07-11)
-- 다음 구현 목표: Style Editor에서 `keep` 판정을 받은 후보 중 근거와 반례 검토 가치가 높은 5개를 선정해 Phase 5 Editor 수동 POC를 진행한다.
+- 현재 구현 마일스톤: **Phase 5 Editor 수동 POC — `conditional_pass`** (근거: 5개 후보 사용자 전수 검토, 3개 `ready_for_draft` 중 2개 숙성 보류, 2개 `needs_more_evidence`, `data/evaluation/editor_poc_2026-07-11.json`, 2026-07-11)
+- 다음 구현 목표: Editor 검토 표본을 20개까지 확장하고 `maturation_hold`를 포함한 후보 상태 기준을 추가 사례로 검증한다.
 - 선행 상태:
   - Phase 0 기억 아카이브 안정화 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
   - Phase 1 기억 기질 고도화 — `passed` (근거: 105개 기억의 schema v2 및 핵심 근거 필드 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
   - Phase 2 회고 씨앗 수집 — `in_progress` (후속 질문과 장기 분석 필드는 운영 중이나 신규 기억에서의 안정적 축적을 계속 검증해야 함)
   - Phase 3 Reporter POC — `passed` (근거: 112개 기억에서 후보 20개 생성 및 사용자 전수 검토, `data/evaluation/reporter_poc_2026-07-11.json`, 2026-07-11)
   - Phase 4 Style Editor POC — `conditional_pass` (근거: 관찰형·후킹형 선호 9/10, 최종 `too_much` 0/10, `taste_fit=high|medium` 9/10, 2026-07-11. 다음 라운드의 `HOOK_TOO_FLAT` 감소 여부는 미검증)
+  - Phase 5 Editor 수동 POC — `conditional_pass` (근거: 후보 5개 중 2개 추가 근거 보류, ready 3개 모두 근거 기억 2개 이상, 2026-07-11. 단계 최소 표본 20개 중 5개만 검토)
 - 완료 판단 원칙: 구현과 검증이 모두 끝난 항목만 `passed`로 표시한다.
 
 이 블록은 구현 진도의 단일 요약이다. 상태가 바뀌면 근거와 날짜를 함께 갱신하고, 현재 구현 마일스톤은 항상 하나만 유지한다.

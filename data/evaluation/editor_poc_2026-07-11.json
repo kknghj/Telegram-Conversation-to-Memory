@@ -1,0 +1,104 @@
+{
+  "poc_id": "editor-poc-2026-07-11",
+  "started_at": "2026-07-11",
+  "status": "conditional_pass",
+  "source_poc_ids": [
+    "reporter-poc-2026-07-11",
+    "style-editor-poc-2026-07-11"
+  ],
+  "target_candidate_count": 5,
+  "reviewed_candidate_count": 5,
+  "selection_policy": "Style Editor keep 후보 중 근거가 2개 이상이고 반례 및 해석 경계 검토 가치가 높은 후보를 우선한다.",
+  "decision_policy": {
+    "allowed_decisions": ["ready_for_draft", "needs_more_evidence", "reject"],
+    "maturation_hold": "ready_for_draft 판정을 유지하되 경쟁 설명이나 연결 근거가 더 쌓일 때까지 실제 초안 생성을 미루는 보조 상태"
+  },
+  "result_summary": {
+    "reviewed_candidate_count": 5,
+    "ready_for_draft_count": 3,
+    "maturation_hold_count": 2,
+    "immediate_draft_ready_count": 1,
+    "needs_more_evidence_count": 2,
+    "reject_count": 0,
+    "postpone_or_reject_rate": 0.4,
+    "ready_candidates_with_two_or_more_memories": 3,
+    "ready_candidates_with_two_or_more_memories_rate": 1.0,
+    "decision": "conditional_pass",
+    "decision_reason": "사용자가 5개 후보의 근거와 반례를 직접 검토했고 40%를 추가 근거 대상으로 보류했으며 ready 후보 모두 근거 기억 2개 이상을 보유했다. 다만 validation_plan의 최소 검증 단위 20개 중 5개만 검토했으므로 단계 전체는 아직 통과로 확정하지 않는다."
+  },
+  "editor_learnings": [
+    "ready_for_draft와 지금 바로 초안을 생성해도 된다는 판단은 같지 않다. 경쟁 설명이 남으면 maturation_hold로 숙성시킨다.",
+    "편의성을 말한 기록과 제품 윤리를 말한 기록은 연결 가능성이 있어도 처음부터 하나의 가치관으로 합치지 않는다.",
+    "불안이 줄어든 장면에서는 불확실성 해소 외에 사람의 비개입, AI 도움, 실제 진척을 경쟁 설명으로 유지한다.",
+    "독서 연결 후보는 근거의 수뿐 아니라 현재 읽는 장르와 알림 시점의 맥락 적합성도 필요하다.",
+    "업무가 앞으로 나가 만족한 사실을 본업을 좋아한다는 해석으로 확대하지 않는다. 이 확대는 사용자에게 강한 거부감을 만든다."
+  ],
+  "items": [
+    {
+      "item_id": "editor-001",
+      "source_candidate_id": "reporter-001",
+      "source_style_item_id": "style-editor-001",
+      "source_memory_count": 4,
+      "decision": "ready_for_draft",
+      "maturation_hold": true,
+      "evidence_assessment": "sufficient_with_competing_emphasis",
+      "counterpoint": "앞의 세 기록은 제품 윤리뿐 아니라 사용 편의와 번거로운 일의 감소에 중점을 둔다.",
+      "scope_constraint": "편의성 추구와 사용자의 여유를 소모하지 않으려는 경계가 연결될 가능성만 남기고 하나의 일관된 가치관으로 단정하지 않는다.",
+      "next_evidence_trigger": "편의성과 제품 윤리가 하나의 제품 결정에서 함께 나타나는 기록",
+      "user_comment": "ready for draft. 다만 앞의 세 기록은 윤리 뿐만 아니라 편의성에 중점을 둔 발언이므로 조금은 묵혀둬야 한다."
+    },
+    {
+      "item_id": "editor-002",
+      "source_candidate_id": "reporter-007",
+      "source_style_item_id": "style-editor-004",
+      "source_memory_count": 4,
+      "decision": "ready_for_draft",
+      "maturation_hold": true,
+      "evidence_assessment": "sufficient_with_competing_causes",
+      "counterpoint": "불안 감소에는 불확실성 해소뿐 아니라 팀장의 비개입, AI 도움, 실제 업무 진척도 작용했을 수 있다.",
+      "scope_constraint": "업무 방향과 승진 시점의 두 장면에만 한정하고 모든 불안의 원인으로 일반화하지 않는다.",
+      "next_evidence_trigger": "결과 자체와 결정되지 않은 대기 시간을 구분할 수 있는 추가 장면",
+      "user_comment": "후보 1과 같은 방식의 ready for draft. 경쟁 설명을 유지하며 묵혀둔다."
+    },
+    {
+      "item_id": "editor-003",
+      "source_candidate_id": "reporter-011",
+      "source_style_item_id": "style-editor-006",
+      "source_memory_count": 4,
+      "decision": "ready_for_draft",
+      "maturation_hold": false,
+      "evidence_assessment": "sufficient",
+      "counterpoint": "AI에게 편하게 지시하는 경험은 사람을 관리하고 싶다는 욕구를 뜻하지 않으며 사용자의 기획과 반복 작업도 결과에 기여했다.",
+      "scope_constraint": "AI가 낮춘 기술 학습 장벽과 타인에게 지시할 때의 정서적 부담에 한정한다.",
+      "user_comment": "ready for draft"
+    },
+    {
+      "item_id": "editor-004",
+      "source_candidate_id": "reporter-014",
+      "source_style_item_id": "style-editor-008",
+      "source_memory_count": 3,
+      "decision": "needs_more_evidence",
+      "maturation_hold": false,
+      "evidence_assessment": "weak_for_current_relevance",
+      "counterpoint": "사용자는 항상 이전 책과 비슷한 책을 고르지 않으며 완전히 새로운 장르를 읽는 시기에는 이 관찰에 공감하기 어렵다.",
+      "scope_constraint": "독서 방식의 변화로 쓰지 않고 비슷한 주제의 책들이 서로의 이해를 도운 일부 시기로만 보존한다.",
+      "next_evidence_trigger": "책 선택 동기, 개념 연결, 재독의 반복과 새로운 장르 독서가 교차하는 추가 기록",
+      "timing_risk": "현재 완전히 새로운 장르를 읽는 중이라면 알림 맥락이 맞지 않을 수 있다.",
+      "user_comment": "needs more evidence. 완전 새로운 장르의 책을 읽을 때 이런 알림을 받으면 크게 공감하지 못할 수 있다."
+    },
+    {
+      "item_id": "editor-005",
+      "source_candidate_id": "reporter-017",
+      "source_style_item_id": "style-editor-010",
+      "source_memory_count": 3,
+      "decision": "needs_more_evidence",
+      "maturation_hold": false,
+      "evidence_assessment": "weak_for_preference_inference",
+      "counterpoint": "그날의 만족은 본업 자체의 흥미가 아니라 팀장의 비개입, AI 도움, 문제 해결과 진척에서 왔을 수 있다.",
+      "scope_constraint": "업무 진척에서 만족을 느낀 사실을 본업을 좋아한다는 해석으로 확대하지 않는다.",
+      "next_evidence_trigger": "본업 중 긍정적 감정이 다시 나타날 때 자율성, 진척, 난이도, 사람의 개입, AI 도움을 구분한 기록",
+      "interpretation_failure_risk": "본업이 앞으로 나간 날의 만족을 본업 선호로 바꾸면 사용자에게 강한 거부감을 유발한다.",
+      "user_comment": "needs more evidence. 본업이 앞으로 나가는 날 만족감을 느낀다는 사실을 본업을 좋아한다고 해석하면 짜증이 치솟을 것 같다."
+    }
+  ]
+}
