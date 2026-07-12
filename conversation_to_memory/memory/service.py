@@ -31,6 +31,9 @@ DEFAULT_DRAFT: dict[str, Any] = {
     "emotion_evidence": [],
     "people": [],
     "projects": [],
+    "tools": [],
+    "organizations": [],
+    "events": [],
     "tags": [],
     "value_tags": [],
     "memory_candidate": "",
@@ -107,6 +110,9 @@ def normalize_draft(data: dict) -> dict:
     draft["emotion_evidence"] = list(draft.get("emotion_evidence") or [])
     draft["people"] = list(draft.get("people") or [])
     draft["projects"] = list(draft.get("projects") or [])
+    draft["tools"] = list(draft.get("tools") or [])
+    draft["organizations"] = list(draft.get("organizations") or [])
+    draft["events"] = list(draft.get("events") or [])
     draft["tags"] = list(draft.get("tags") or [])
     draft["value_tags"] = list(draft.get("value_tags") or [])
     draft["key_phrases"] = list(draft.get("key_phrases") or [])

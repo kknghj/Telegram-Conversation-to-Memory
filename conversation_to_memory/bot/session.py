@@ -41,8 +41,18 @@ def get_session(user_data: dict[str, Any]) -> dict[str, Any] | None:
 def ensure_session(user_data: dict[str, Any]) -> dict[str, Any]:
     session = user_data.get(KEY_CURRENT_SESSION)
     if session is None:
-        session = {"conversation": [], "user_texts": []}
+        session = {
+            "conversation": [],
+            "user_texts": [],
+            "original_user_texts": [],
+            "accepted_followup_answers": [],
+            "interaction_feedback": [],
+        }
         user_data[KEY_CURRENT_SESSION] = session
+    else:
+        session.setdefault("original_user_texts", [])
+        session.setdefault("accepted_followup_answers", [])
+        session.setdefault("interaction_feedback", [])
     return session
 
 
@@ -74,8 +84,15 @@ def ensure_question_session(user_data: dict[str, Any]) -> dict[str, Any]:
             "question_modes_used": [],
             "meaning_check_count": 0,
             "last_question_mode": None,
+            "questions_text": [],
+            "last_response_kind": None,
+            "second_question_gate": None,
         }
         user_data[KEY_QUESTION_SESSION] = qsession
+    else:
+        qsession.setdefault("questions_text", [])
+        qsession.setdefault("last_response_kind", None)
+        qsession.setdefault("second_question_gate", None)
     return qsession
 
 
@@ -93,8 +110,35 @@ def record_question(
         qsession["last_question_mode"] = mode
     if mode == "meaning_check":
         qsession["meaning_check_count"] += 1
+    question_text = str(question_result.get("followup_question") or "").strip()
+    if question_text:
+        qsession.setdefault("questions_text", []).append(question_text)
     draft["question_mode_used"] = list(qsession["question_modes_used"])
     return qsession
+
+
+def append_memory_source_text(user_data: dict[str, Any], text: str, *, original: bool = False) -> None:
+    """기억 원문에 포함할 텍스트만 추가."""
+    current = ensure_session(user_data)
+    current["user_texts"].append(text)
+    if original:
+        current["original_user_texts"].append(text)
+
+
+def append_accepted_followup_answer(user_data: dict[str, Any], text: str) -> None:
+    current = ensure_session(user_data)
+    current["accepted_followup_answers"].append(text)
+    current["user_texts"].append(text)
+
+
+def append_interaction_feedback(
+    user_data: dict[str, Any],
+    *,
+    kind: str,
+    text: str,
+) -> None:
+    current = ensure_session(user_data)
+    current["interaction_feedback"].append({"kind": kind, "text": text})
 
 
 def append_recent_context(

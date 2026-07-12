@@ -38,7 +38,13 @@ def _question_trace(
     sent: bool,
     engine: str,
     error: str | None = None,
+    question_result: dict[str, Any] | None = None,
+    question_session: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    qsession = question_session or {}
+    result = question_result or {}
+    gate = qsession.get("second_question_gate") or {}
+    asked = int(qsession.get("questions_asked") or 0)
     trace: dict[str, Any] = {
         "evaluated": True,
         "need_followup": need_followup,
@@ -48,7 +54,22 @@ def _question_trace(
         "generated": generated,
         "sent": sent,
         "engine": engine,
+        "question_round": asked + (0 if sent else 1) if asked else (1 if sent or generated else 0),
+        "archive_gap": result.get("archive_gap"),
+        "reflective_handle_strength": result.get("reflective_handle_strength"),
+        "candidate_count": result.get("candidate_count"),
+        "selected_anchor": result.get("selected_anchor") or "",
+        "selected_question_mode": result.get("question_mode") or strategy,
+        "rejected_candidates": list(result.get("rejected_candidates") or [])[:5],
+        "second_question_allowed": gate.get("second_question_allowed"),
+        "second_question_gate_reason": gate.get("second_question_gate_reason") or "",
+        "final_reason": reason or "",
+        "question_outcome": result.get("question_outcome")
+        or ("question_sent" if sent else ""),
     }
+    if sent:
+        trace["question_round"] = asked  # record_question 이후라면 asked가 이미 증가
+        trace["question_outcome"] = "question_sent"
     if error:
         trace["error"] = error
     return trace
@@ -123,6 +144,20 @@ def _maybe_reflection_followup_or_review(
     session.set_draft(user_data, draft)
 
     if result.get("needs_followup") and result.get("followup_question"):
+        latest_user = current["user_texts"][-1] if current.get("user_texts") else ""
+        failure_hooks.record_followup_violation(
+            user_data,
+            user_text=latest_user,
+            followup_question=result["followup_question"],
+        )
+        session.record_question(user_data, draft, result)
+        qsession = session.ensure_question_session(user_data)
+        if qsession.get("questions_asked", 0) >= 2:
+            result = dict(result)
+            result["question_outcome"] = "second_question_gate_passed"
+        else:
+            result = dict(result)
+            result["question_outcome"] = "question_sent"
         trace_recorder.record_question_trace(
             user_data,
             _question_trace(
@@ -133,15 +168,10 @@ def _maybe_reflection_followup_or_review(
                 generated=True,
                 sent=True,
                 engine="reflection",
+                question_result=result,
+                question_session=qsession,
             ),
         )
-        latest_user = current["user_texts"][-1] if current.get("user_texts") else ""
-        failure_hooks.record_followup_violation(
-            user_data,
-            user_text=latest_user,
-            followup_question=result["followup_question"],
-        )
-        session.record_question(user_data, draft, result)
         current["conversation"].append(
             {"role": "assistant", "content": result["followup_question"]}
         )
@@ -156,7 +186,12 @@ def _maybe_reflection_followup_or_review(
             state=states.FOLLOWUP,
         )
 
-    skip_reason = result.get("skip_reason") or "information_already_complete"
+    skip_reason = result.get("skip_reason") or "no_reflective_handle"
+    if skip_reason == "information_already_complete":
+        # 레거시 라벨을 세분화된 사유로 치환.
+        skip_reason = result.get("question_outcome") or "no_reflective_handle"
+        if result.get("reflective_handle_strength") == "strong":
+            skip_reason = "low_expected_gain"
     trace_recorder.record_question_trace(
         user_data,
         _question_trace(
@@ -167,10 +202,11 @@ def _maybe_reflection_followup_or_review(
             generated=False,
             sent=False,
             engine="reflection",
+            question_result=result,
+            question_session=qsession,
         ),
     )
     return _review(draft, review_message)
-
 
 def maybe_followup_or_review(
     user_id: str,

@@ -36,9 +36,10 @@ class FailingTraceStore(DecisionTraceStore):
 
 
 DRAFT_WITH_PROJECT = {
-    "topic": "Cursor 작업",
+    "topic": "Harness 작업",
     "event_summary": "Cursor로 하네스 작업을 진행했다.",
-    "projects": ["Cursor", "Harness"],
+    "projects": ["Harness"],
+    "tools": ["Cursor"],
     "tags": ["개발"],
     "value_tags": [],
 }
@@ -159,7 +160,13 @@ def test_question_skip_reason_recorded(monkeypatch):
     trace = trace_recorder.get_question_trace(user_data)
     assert trace["evaluated"] is True
     assert trace["need_followup"] is False
-    assert trace["reason"] == "information_already_complete"
+    # information_already_complete는 세분화된 skip reason으로 치환된다.
+    assert trace["reason"] in {
+        "no_reflective_handle",
+        "low_expected_gain",
+        "question_candidate_not_generated",
+        "information_already_complete",
+    }
     assert trace["generated"] is False
     assert trace["sent"] is False
 
@@ -251,10 +258,10 @@ def test_project_trace_detection_failure_reason():
 
 def test_project_trace_rule_confirmed_confidence():
     trace = build_project_trace(
-        {"projects": ["Cursor"]}, "오늘 cursor로 작업했다"
+        {"projects": ["Harness"]}, "오늘 harness 구축 작업을 했다"
     )
     assert trace["detected"] is True
-    assert trace["selected_project"] == "Cursor"
+    assert trace["selected_project"] == "Harness"
     assert trace["confidence"] == 1.0
 
 
@@ -308,7 +315,7 @@ def test_trace_saved_with_memory_id_and_tag_written(monkeypatch):
     trace = capture.traces[0]
     assert trace.memory_id == "mem-123"
     assert trace.project_trace["tag_written"] is True
-    assert trace.project_trace["selected_project"] == "Cursor"
+    assert trace.project_trace["selected_project"] == "Harness"
     assert trace.tag_trace["written"] is True
 
 

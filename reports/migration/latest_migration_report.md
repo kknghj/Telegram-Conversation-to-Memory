@@ -1,7 +1,7 @@
 # Migration Report
 
 **Mode:** Apply
-**Date:** 2026-07-09 23:37:58
+**Date:** 2026-07-12 11:22:12
 **Elapsed Time:** 0.0s
 
 ## Summary
@@ -13,7 +13,7 @@
 - **Skipped:** 0
 - **Failed:** 1
 
-**Log:** `C:\Users\Heeju\Desktop\vibecode\07-conversation-to-memory\logs\migration_2026-07-09_233758.log`
+**Log:** `C:\Users\Heeju\Desktop\vibecode\07-conversation-to-memory\logs\migration_2026-07-12_112212.log`
 
 ## Invalid
 

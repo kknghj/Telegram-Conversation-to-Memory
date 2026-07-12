@@ -144,18 +144,49 @@ VALUE_TAG_ALIASES: dict[str, tuple[str, ...]] = {
 }
 
 # 지속적으로 추적할 사용자 프로젝트 엔티티. 별칭을 정규화된 이름으로 매핑한다.
+# 도구(Cursor/Codex/GPT)와 행사(공모전)는 여기에 넣지 않는다.
 PROJECT_ENTITY_ALIASES: dict[str, tuple[str, ...]] = {
     "GPTERS": ("gpters", "지피터스", "지피터스 ai", "지피터스 강의"),
     "Harness": ("harness", "하네스", "하네스 구축"),
-    "Cursor": ("cursor", "커서"),
-    "Codex": ("codex", "코덱스"),
     "Telegram Conversation to Memory": (
         "conversation to memory",
         "conversation-to-memory",
         "대화를 기억으로",
+        "telegram-conversation-to-memory",
     ),
-    "토스 미니앱": ("토스 미니앱", "토스미니앱", "토스 앱 제작", "토스 앱"),
 }
+
+# 비인간 도구/플랫폼 — people에서 제거하고 tools로 재분류.
+TOOL_ENTITY_ALIASES: dict[str, tuple[str, ...]] = {
+    "GPT": ("gpt", "chatgpt"),
+    "ChatGPT": ("chatgpt",),
+    "OpenAI": ("openai",),
+    "Cursor": ("cursor", "커서"),
+    "Codex": ("codex", "코덱스"),
+    "Notion": ("notion", "노션"),
+    "Telegram": ("telegram", "텔레그램"),
+    "Supabase": ("supabase",),
+    "Render": ("render",),
+}
+
+# 공모전·행사·프로그램 — projects가 아니라 events.
+EVENT_ENTITY_ALIASES: dict[str, tuple[str, ...]] = {
+    "토스 미니앱 공모전": (
+        "토스 미니앱 공모전",
+        "토스 공모전",
+        "미니앱 공모전",
+        "토스 미니앱 대회",
+    ),
+}
+
+# 원문에서 사용자가 개발·제출하는 앱/서비스명 패턴.
+# 캡처 그룹은 '앱' 앞 단어들이며, 함수에서 '앱'을 붙여 정규화한다.
+APP_PROJECT_RE = re.compile(
+    r"([가-힣A-Za-z0-9]+(?:\s+[가-힣A-Za-z0-9]+){0,3})\s*앱"
+    r"(?:을|를|에|은|는|이|가)?"
+    r"\s*(?:제출|개발|만들|완성|작업|출시)"
+)
+
 
 # 개발 철학·일에 대한 관점·인간관계 가치관·반복 가능한 판단 기준·프로젝트 선택 기준 신호.
 # 이 신호가 있으면 reflection_seed 후보(장기 패턴)로 표시한다.
@@ -396,13 +427,156 @@ def detect_value_tags(source_text: str) -> list[str]:
 
 
 def detect_project_entities(source_text: str) -> list[str]:
-    """지속 프로젝트 엔티티를 정규화된 이름으로 추출."""
-    source = _normalize_text(source_text).lower()
+    """지속 프로젝트 엔티티를 정규화된 이름으로 추출.
+
+    공모전·행사는 projects에 넣지 않는다. 원문에 명시된 앱/서비스 이름을 우선한다.
+    """
+    source_raw = _normalize_text(source_text)
+    source = source_raw.lower()
     found: list[str] = []
+
+    # 명시적 앱 이름 (예: 여름 메뉴 추천앱)을 공모전 이름보다 우선.
+    for match in APP_PROJECT_RE.finditer(source_raw):
+        stem = _normalize_text(match.group(1))
+        if not stem:
+            continue
+        tokens = stem.split()
+        chosen = ""
+        for idx in range(len(tokens)):
+            candidate_stem = " ".join(tokens[idx:])
+            gap = " " if re.search(rf"{re.escape(candidate_stem)}\s+앱", source_raw) else ""
+            name = f"{candidate_stem}{gap}앱"
+            if "공모전" in name or "미니앱 공모" in name:
+                continue
+            if any(
+                alias in name
+                for aliases in EVENT_ENTITY_ALIASES.values()
+                for alias in aliases
+            ):
+                continue
+            if candidate_stem in {"미니", "토스 미니", "토스"}:
+                continue
+            chosen = name
+            break
+        if chosen and chosen not in found:
+            found.append(chosen)
+
     for canonical, aliases in PROJECT_ENTITY_ALIASES.items():
         if any(alias.lower() in source for alias in aliases) and canonical not in found:
             found.append(canonical)
     return found
+
+
+def detect_tool_entities(source_text: str) -> list[str]:
+    source = _normalize_text(source_text).lower()
+    found: list[str] = []
+    for canonical, aliases in TOOL_ENTITY_ALIASES.items():
+        if any(alias.lower() in source for alias in aliases) and canonical not in found:
+            found.append(canonical)
+    return found
+
+
+def detect_event_entities(source_text: str) -> list[str]:
+    source = _normalize_text(source_text).lower()
+    found: list[str] = []
+    for canonical, aliases in EVENT_ENTITY_ALIASES.items():
+        if any(alias.lower() in source for alias in aliases) and canonical not in found:
+            found.append(canonical)
+    return found
+
+
+def reclassify_entities(draft: dict, source_text: str) -> dict:
+    """people/projects/tools/events를 역할에 맞게 재분류한다."""
+    people = [str(p).strip() for p in (draft.get("people") or []) if str(p).strip()]
+    projects = [str(p).strip() for p in (draft.get("projects") or []) if str(p).strip()]
+    tools = [str(t).strip() for t in (draft.get("tools") or []) if str(t).strip()]
+    events = [str(e).strip() for e in (draft.get("events") or []) if str(e).strip()]
+    tags = [str(t).strip() for t in (draft.get("tags") or []) if str(t).strip()]
+
+    tool_alias_to_canonical: dict[str, str] = {}
+    for canonical, aliases in TOOL_ENTITY_ALIASES.items():
+        tool_alias_to_canonical[canonical.lower()] = canonical
+        for alias in aliases:
+            tool_alias_to_canonical[alias.lower()] = canonical
+
+    def _as_tool(name: str) -> str | None:
+        key = name.lower().strip()
+        if key in tool_alias_to_canonical:
+            return tool_alias_to_canonical[key]
+        for alias, canonical in tool_alias_to_canonical.items():
+            if alias and alias == key:
+                return canonical
+        # 완전 일치만 — "텔레그램 기억봇" 같은 프로젝트명을 도구로 오인하지 않는다.
+        return tool_alias_to_canonical.get(key)
+
+    cleaned_people: list[str] = []
+    for person in people:
+        mapped = _as_tool(person)
+        if mapped:
+            if mapped not in tools:
+                tools.append(mapped)
+            continue
+        # GPT/ChatGPT가 긴 라벨의 일부인 경우.
+        lowered = person.lower()
+        if any(token in lowered for token in ("gpt", "chatgpt", "openai", "cursor", "codex")):
+            for canonical, aliases in TOOL_ENTITY_ALIASES.items():
+                if canonical.lower() in lowered or any(a in lowered for a in aliases):
+                    if canonical not in tools:
+                        tools.append(canonical)
+                    break
+            continue
+        cleaned_people.append(person)
+
+    for tool in detect_tool_entities(source_text):
+        if tool not in tools:
+            tools.append(tool)
+
+    for event in detect_event_entities(source_text):
+        if event not in events:
+            events.append(event)
+
+    cleaned_projects: list[str] = []
+    for project in projects:
+        mapped_tool = _as_tool(project)
+        if mapped_tool or project in TOOL_ENTITY_ALIASES:
+            tool_name = mapped_tool or project
+            if tool_name not in tools:
+                tools.append(tool_name)
+            continue
+        if project in EVENT_ENTITY_ALIASES or any(
+            alias.lower() in project.lower()
+            for aliases in EVENT_ENTITY_ALIASES.values()
+            for alias in aliases
+        ):
+            for canonical, aliases in EVENT_ENTITY_ALIASES.items():
+                if project == canonical or any(
+                    alias.lower() in project.lower() for alias in aliases
+                ):
+                    if canonical not in events:
+                        events.append(canonical)
+                    break
+            continue
+        if project in {"토스 미니앱", "토스미니앱", "토스 앱", "토스 앱 제작"}:
+            # 레거시 프로젝트 태그: 같은 기록에 앱 이름이 있으면 앱을 우선하고
+            # 공모전 표현이 있으면 event로만 둔다.
+            continue
+        cleaned_projects.append(project)
+
+    for project in detect_project_entities(source_text):
+        if project not in cleaned_projects:
+            cleaned_projects.append(project)
+
+    for event in events:
+        if event not in tags:
+            tags.append(event)
+
+    return {
+        "people": cleaned_people,
+        "projects": cleaned_projects,
+        "tools": tools,
+        "events": events,
+        "tags": tags,
+    }
 
 
 def detect_reflection_seed_signals(source_text: str) -> list[str]:
@@ -767,6 +941,14 @@ def validate_draft(
         if project not in projects:
             projects.append(project)
     validated["projects"] = projects
+
+    # people/tools/events 재분류 (비인간 엔티티·공모전 분리).
+    reclassified = reclassify_entities(validated, source_text)
+    validated["people"] = reclassified["people"]
+    validated["projects"] = reclassified["projects"]
+    validated["tools"] = reclassified["tools"]
+    validated["events"] = reclassified["events"]
+    validated["tags"] = reclassified["tags"]
 
     # 시제 분류: 미래 사건을 완료 사실로 단정하지 않도록 표시.
     validated["temporal_status"] = infer_temporal_status(source_text)

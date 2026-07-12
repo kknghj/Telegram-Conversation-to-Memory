@@ -75,6 +75,10 @@ FAILURE_TYPES = frozenset(
         "memory_unavailable_ignored",
         "inappropriate_positive_reframe",
         "value_hidden_by_event",
+        "redundant_question",
+        "low_salience_anchor",
+        "category_mismatch",
+        "meta_feedback_leaked_into_memory",
     }
 )
 
@@ -86,6 +90,10 @@ RULE_BY_FAILURE_TYPE: dict[str, str] = {
     "memory_unavailable_ignored": "Rule 1",
     "inappropriate_positive_reframe": "Rule 5",
     "value_hidden_by_event": "Rule 6",
+    "redundant_question": "Rule 4",
+    "low_salience_anchor": "Rule 4",
+    "category_mismatch": "Rule 4",
+    "meta_feedback_leaked_into_memory": "Rule 4",
 }
 
 DEFAULT_EXPECTED_BEHAVIOR: dict[str, str] = {
@@ -105,6 +113,21 @@ DEFAULT_EXPECTED_BEHAVIOR: dict[str, str] = {
         "가치관·판단 기준이 핵심이었으므로, 사건 나열보다 가치관을 event_summary 중심에 두고 "
         "memory_type=reflection_seed로 저장했어야 함."
     ),
+    "redundant_question": (
+        "원문에 이미 답이 있는 질문 후보를 거절하고, 질문 없이 요약하거나 "
+        "미탐색 각도의 질문만 생성했어야 함."
+    ),
+    "low_salience_anchor": (
+        "메모의 핵심(마감·제품 기준·프로젝트 성격)을 우선하고, "
+        "주변 예시(음식 인스턴스 등)를 질문 앵커로 확대하지 말았어야 함."
+    ),
+    "category_mismatch": (
+        "비교 질문은 같은 추상화 수준과 공통 비교축이 있을 때만 허용했어야 함."
+    ),
+    "meta_feedback_leaked_into_memory": (
+        "질문 품질에 대한 사용자 메타 피드백은 실패 기록으로만 남기고 "
+        "기억 원문·요약·key_phrases에 포함하지 말았어야 함."
+    ),
 }
 
 DEFAULT_ROOT_CAUSE: dict[str, str] = {
@@ -117,6 +140,17 @@ DEFAULT_ROOT_CAUSE: dict[str, str] = {
         "부정 감정 표현 직후 반대 감정과 즐거운 순간을 묻는 긍정 전환 질문을 생성함"
     ),
     "value_hidden_by_event": "가치관이 핵심이었는데 사건 요약 위주로 저장됨",
+    "redundant_question": (
+        "질문 후보가 원문에 이미 답이 있는지 검증하지 않았고, "
+        "reflective handle 존재를 질문 필요성과 동일시함"
+    ),
+    "low_salience_anchor": (
+        "핵심 테마와 주변 예시의 중요도를 구분하지 않고 낮은 중요도 앵커를 선택함"
+    ),
+    "category_mismatch": "서로 다른 추상화 수준의 대상을 비교 질문으로 묶음",
+    "meta_feedback_leaked_into_memory": (
+        "후속 응답을 분류하지 않고 사용자 입력을 전부 기억 원문에 추가함"
+    ),
 }
 
 
@@ -132,7 +166,31 @@ def detect_correction_trigger(text: str) -> str | None:
 def detect_question_rejection_trigger(text: str) -> str | None:
     """질문 거부 문구를 substring으로 탐지."""
     normalized = text.strip()
-    for trigger in ("그런건 묻지마", "그런 건 묻지마", "묻지마"):
+    for trigger in (
+        "그런건 묻지마",
+        "그런 건 묻지마",
+        "묻지마",
+        "맥락에 맞지 않은 질문",
+        "맥락에 안 맞는 질문",
+        "그 질문은 이상",
+        "질문이 이상",
+        "이상한 질문",
+    ):
+        if trigger in normalized:
+            return trigger
+    return None
+
+
+def detect_meta_feedback_trigger(text: str) -> str | None:
+    normalized = text.strip()
+    for trigger in (
+        "같은 격이어야",
+        "같은 급이어야",
+        "비교 대상이 아니",
+        "비교가 안 돼",
+        "격이 다르",
+        "둘 중 무엇이 낫냐고",
+    ):
         if trigger in normalized:
             return trigger
     return None
@@ -545,8 +603,12 @@ def try_prepare_question_rejection_failure(
         user_correction=user_correction,
         context=context,
     )
-    if failure_type != "inappropriate_positive_reframe":
-        return None
+    if failure_type == "inappropriate_positive_reframe":
+        pass
+    elif detect_meta_feedback_trigger(user_correction):
+        failure_type = "category_mismatch"
+    else:
+        failure_type = "redundant_question"
 
     return {
         "failure_type": failure_type,
@@ -555,11 +617,73 @@ def try_prepare_question_rejection_failure(
         "expected_behavior": DEFAULT_EXPECTED_BEHAVIOR[failure_type],
         "root_cause": DEFAULT_ROOT_CAUSE[failure_type],
         "fixed_rule": RULE_BY_FAILURE_TYPE[failure_type],
-        "severity": "high",
+        "severity": "high" if failure_type == "inappropriate_positive_reframe" else "medium",
         "conversation_id": conversation_id or str(uuid.uuid4()),
         "message_index": _message_index(conversation),
         "assistant_output": rejected_question,
     }
+
+
+def record_meta_feedback_failure(
+    *,
+    user_correction: str,
+    conversation: list[dict[str, str]] | None,
+    conversation_id: str = "",
+    log_path: Path | None = None,
+) -> dict[str, Any] | None:
+    """비교 격/질문 품질 메타 피드백을 failure snapshot으로 기록."""
+    if not detect_meta_feedback_trigger(user_correction):
+        return None
+
+    context = build_failure_context(conversation, window=8)
+    rejected_question = _last_assistant_message(conversation)
+    failure_type = "category_mismatch"
+    return record_interpretation_failure(
+        failure_type=failure_type,
+        context=context,
+        user_correction=user_correction,
+        assistant_output=rejected_question,
+        expected_behavior=DEFAULT_EXPECTED_BEHAVIOR[failure_type],
+        root_cause=DEFAULT_ROOT_CAUSE[failure_type],
+        fixed_rule=RULE_BY_FAILURE_TYPE[failure_type],
+        conversation_id=conversation_id,
+        message_index=_message_index(conversation),
+        log_path=log_path,
+    )
+
+
+def record_static_failure_case(
+    *,
+    failure_type: str,
+    context: list[dict[str, str]],
+    user_correction: str,
+    assistant_output: str,
+    conversation_id: str,
+    notes: str = "",
+    severity: str = "medium",
+    log_path: Path | None = None,
+) -> dict[str, Any]:
+    """테스트/사고 재현용으로 명시적 실패 레코드를 기록."""
+    if failure_type not in FAILURE_TYPES:
+        raise ValueError(f"알 수 없는 failure_type: {failure_type}")
+
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "conversation_id": conversation_id or str(uuid.uuid4()),
+        "message_index": None,
+        "failure_type": failure_type,
+        "severity": severity,
+        "context": context,
+        "user_correction": user_correction,
+        "assistant_after_correction": assistant_output,
+        "expected_behavior": DEFAULT_EXPECTED_BEHAVIOR[failure_type],
+        "root_cause": DEFAULT_ROOT_CAUSE[failure_type],
+        "fixed_rule": RULE_BY_FAILURE_TYPE[failure_type],
+    }
+    if notes:
+        record["notes"] = notes
+    recorder = FailureRecorder(log_path) if log_path else _default_recorder
+    return recorder.append(record)
 
 
 def finalize_question_rejection_failure(

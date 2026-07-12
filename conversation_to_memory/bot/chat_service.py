@@ -253,7 +253,7 @@ def handle_recording(
     current = session.ensure_session(user_data)
 
     if text != states.SUMMARY_TRIGGER:
-        current["user_texts"].append(text)
+        session.append_memory_source_text(user_data, text, original=True)
         current["conversation"].append({"role": "user", "content": text})
         db.save_active_draft(
             user_id,
@@ -307,16 +307,78 @@ def handle_followup(
     user_data: dict[str, Any],
     text: str,
 ) -> ChatTurnResult:
+    from conversation_to_memory.bot.followup_response import (
+        classify_followup_response,
+        should_go_to_review_immediately,
+        should_include_in_memory_source,
+        should_record_as_failure,
+    )
+    from conversation_to_memory.memory.question_quality import (
+        assess_reflective_handle_strength,
+        evaluate_second_question_gate,
+    )
+
+    kind = classify_followup_response(text)
     failure_hooks.maybe_record_question_rejection_failure(user_data, text)
+    if kind == "meta_feedback":
+        failure_hooks.record_meta_feedback_failure(user_data, text)
+    elif kind == "question_rejection":
+        failure_hooks.maybe_record_generic_question_rejection(user_data, text)
     failure_hooks.maybe_prepare_correction_failure(user_data, text)
+
     current = session.ensure_session(user_data)
-    current["user_texts"].append(text)
     current["conversation"].append({"role": "user", "content": text})
+    qsession = session.ensure_question_session(user_data)
+    qsession["last_response_kind"] = kind
+
+    if should_record_as_failure(kind) or should_go_to_review_immediately(kind):
+        session.append_interaction_feedback(user_data, kind=kind, text=text)
+        draft = session.get_draft(user_data) or {}
+        db.save_active_draft(
+            user_id,
+            user_texts=current["user_texts"],
+            conversation=current["conversation"],
+            draft=draft,
+        )
+        return ChatTurnResult(messages=[_review_message(draft)], state=states.REVIEW)
+
+    if kind == "correction":
+        session.append_interaction_feedback(user_data, kind=kind, text=text)
+        # 정정은 기억 원문에 넣지 않고 수정 지시로만 전달한다.
+        try:
+            draft = memory_service.analyze_recording(
+                user_texts=current["user_texts"],
+                conversation=current["conversation"],
+                recent_context=session.get_recent_context(user_data),
+                followup_already_asked=True,
+                edit_instruction=text,
+                previous_draft=session.get_draft(user_data),
+            )
+            session.set_draft(user_data, draft)
+            failure_hooks.finalize_pending_failure(user_data, _review_message(draft))
+            db.save_active_draft(
+                user_id,
+                user_texts=current["user_texts"],
+                conversation=current["conversation"],
+                draft=draft,
+            )
+            return ChatTurnResult(messages=[_review_message(draft)], state=states.REVIEW)
+        except Exception as e:
+            logger.exception("후속 정정 처리 오류")
+            return ChatTurnResult(messages=[f"오류: {e}"], state=states.FOLLOWUP)
+
+    if should_include_in_memory_source(kind):
+        session.append_accepted_followup_answer(user_data, text)
 
     try:
         draft = memory_service.analyze_recording(
             user_texts=current["user_texts"],
-            conversation=current["conversation"],
+            conversation=[
+                turn
+                for turn in current["conversation"]
+                if turn.get("role") != "user"
+                or turn.get("content") in set(current["user_texts"])
+            ],
             recent_context=session.get_recent_context(user_data),
             followup_already_asked=True,
         )
@@ -328,9 +390,64 @@ def handle_followup(
             conversation=current["conversation"],
             draft=draft,
         )
-        if question_service.is_reflection_agent_enabled():
-            return _maybe_followup_or_review(user_id, user_data, draft)
-        return ChatTurnResult(messages=[_review_message(draft)], state=states.REVIEW)
+        if not question_service.is_reflection_agent_enabled():
+            return ChatTurnResult(messages=[_review_message(draft)], state=states.REVIEW)
+
+        previous_question = ""
+        questions_text = qsession.get("questions_text") or []
+        if questions_text:
+            previous_question = questions_text[-1]
+
+        handle_strength = assess_reflective_handle_strength(
+            draft=draft,
+            user_texts=current["user_texts"],
+            has_expansion_signal=question_service.has_reflective_expansion_signal(
+                draft=draft,
+                user_texts=current["user_texts"],
+            ),
+        )
+        unresolved = ""
+        open_questions = draft.get("open_questions") or []
+        if open_questions:
+            unresolved = str(open_questions[0])
+        if any(
+            marker in text
+            for marker in ("하지만", "우선", "대신", "보다", "사이에서", "중요한 건")
+        ):
+            unresolved = unresolved or text[:80]
+
+        gate = evaluate_second_question_gate(
+            question_session=qsession,
+            response_kind=kind,
+            original_user_texts=list(current.get("original_user_texts") or []),
+            accepted_answer=text,
+            previous_question=previous_question,
+            new_reflective_handle_strength=handle_strength,
+            new_unresolved_point=unresolved,
+        )
+        qsession["second_question_gate"] = gate
+        if not gate.get("second_question_allowed"):
+            trace_recorder.record_question_trace(
+                user_data,
+                {
+                    "evaluated": True,
+                    "need_followup": False,
+                    "reason": gate.get("second_question_gate_reason")
+                    or "second_question_gate_rejected",
+                    "strategy": "skip",
+                    "llm_called": False,
+                    "generated": False,
+                    "sent": False,
+                    "engine": "reflection",
+                    "question_round": int(qsession.get("questions_asked") or 0) + 1,
+                    "second_question_allowed": False,
+                    "second_question_gate_reason": gate.get("second_question_gate_reason"),
+                    "question_outcome": "second_question_gate_rejected",
+                },
+            )
+            return ChatTurnResult(messages=[_review_message(draft)], state=states.REVIEW)
+
+        return _maybe_followup_or_review(user_id, user_data, draft)
     except Exception as e:
         logger.exception("후속 답변 처리 오류")
         return ChatTurnResult(messages=[f"오류: {e}"], state=states.FOLLOWUP)

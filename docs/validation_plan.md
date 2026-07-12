@@ -2,16 +2,28 @@
 
 ## 현재 검증 상태
 
-- 기준일: 2026-07-11
+- 기준일: 2026-07-12
 - 0단계 평가 기반 정리 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
 - 1단계 기억 기질 품질 — `passed` (근거: 105개 기억 및 사용자 직접 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
+- 2단계 회고 씨앗 수집 — `conditional_pass` (근거: 질문 품질/피드백 분리 구현, 두 실제 대화 fixture replay·회귀 테스트 통과, `docs/archive/incidents/question_quality_and_feedback_contamination_2026-07-12.md`, 2026-07-12. live 관찰 미완)
 - 3단계 Reporter 후보 발견 — `passed` (근거: 20개 후보 사용자 전수 검토, `data/evaluation/reporter_poc_2026-07-11.json`, 2026-07-11)
 - 4단계 Style Editor 후킹/재미 — `conditional_pass` (근거: 10개 후보 사용자 전수 검토, 관찰형·후킹형 선호 9/10, 최종 `too_much` 0/10, `taste_fit=high|medium` 9/10, `data/evaluation/style_editor_poc_2026-07-11.json`, 2026-07-11. 다음 라운드의 `HOOK_TOO_FLAT` 감소 여부는 미검증)
-- 현재 검증 단계: **5단계 Editor 근거·반례 — `conditional_pass`** (근거: 5개 후보 사용자 전수 검토, `ready_for_draft` 3개·`needs_more_evidence` 2개, `data/evaluation/editor_poc_2026-07-11.json`, 2026-07-11)
-- 다음 검증 행동: 같은 근거·반례 형식으로 Editor 후보 15개를 추가 검토해 최소 표본 20개를 채운다.
-- 진입 제한: 후보는 low-risk, current schema, primary evidence 보유, `reflection_value` medium/high 기억을 우선 사용하며 아직 사용자에게 발행하지 않는다.
+- 현재 검증 단계: **2단계 회고 씨앗 수집 — `conditional_pass`** (질문 품질 사고 수정 후 live 검증 대기)
+- 다음 검증 행동: 최근 live 신규 기억 20건에서 중복 질문·메타 피드백 원문 유입·엔티티 오분류·두 번째 질문 게이트 동작을 관찰한다.
+- 진입 제한: 질문률을 코드로 강제하지 않으며, `question_outcome` trace로 생성/거절 사유만 관측한다.
 
 이 블록은 검증 진도의 단일 요약이다. 새 증거가 생기면 상태, 근거, 날짜, 다음 검증 행동을 함께 갱신하며 다음 검증 행동은 항상 하나만 유지한다.
+
+### 2026-07-12 질문 품질·피드백 오염 수정
+
+- 실패 사례 A: 도스토옙스키 연결 재질문 → `redundant_question` / `answered_already` 차단
+- 실패 사례 B: 콩국수 저중요도 앵커·추상화 불일치·메타 피드백 원문 유입·GPT people 오분류
+- 구현: archive_gap/reflective_handle 분리, 후보 검증, 후속 응답 분류, 두 번째 질문 게이트, people/projects/tools/events 후처리
+- 자동 검증: `python -m pytest -q` 287 passed
+- fixture replay: `tests/test_question_quality_replay.py` passed
+- failure dataset: `telegram_20260712_dostoevsky_redundant_question`, `telegram_20260712_summer_menu_low_salience_anchor`
+- 판정: `conditional_pass` — 코드/테스트는 통과, live 20건 관찰 전
+- incident: `docs/archive/incidents/question_quality_and_feedback_contamination_2026-07-12.md`
 
 ### 2026-07-11 Editor 근거·반례 수동 POC 중간 결과
 

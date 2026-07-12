@@ -157,8 +157,8 @@ def test_detect_project_entities_normalized():
     projects = detect_project_entities(TOSS_INPUT)
     assert "GPTERS" in projects
     assert "Harness" in projects
-    assert "Cursor" in projects
-    assert "토스 미니앱" in projects
+    assert "Cursor" not in projects
+    assert "토스 미니앱" not in projects
 
 
 def test_detect_reflection_seed_signals_present():
@@ -193,7 +193,8 @@ def test_validate_draft_promotes_value_hidden_to_reflection_seed():
     assert validated["temporal_status"] == "mixed"
     assert "다크패턴 거부" in validated["value_tags"]
     assert "GPTERS" in validated["projects"]
-    assert "토스 미니앱" in validated["projects"]
+    assert "Cursor" in validated.get("tools", [])
+    assert "토스 미니앱" not in validated["projects"]
 
 
 def test_validate_draft_keeps_neutral_case_unchanged():

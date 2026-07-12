@@ -1,576 +1,260 @@
 # Question Strategy
 
 회고형 대화 에이전트가 생성하는 후속 질문의 **유형·목적·사용 조건**을 정의한다.  
-질문 생성 로직(`conversation_to_memory/memory/question.py` 예정)과 프롬프트(`question_generation_prompt.txt` 예정)의 단일 기준 문서다.
+질문 생성 로직(`conversation_to_memory/memory/question.py`, `question_quality.py`)과 프롬프트(`question_generation_prompt.txt`)의 단일 기준 문서다.
+
+사고 경위는 `docs/archive/incidents/`에 남기고, 이 문서는 **현행 규칙만** 유지한다.
 
 ---
 
 ## 1. 설계 원칙
 
 1. **원문 충실** — 질문은 기록을 왜곡하지 않고 확장한다.
-2. **유형 다양화** — `meaning_check`만 반복하지 않는다.
-3. **사용자 프로필 정렬** — `user_conversation_profile.md`의 연상형·감각 중심 성향을 따른다.
-4. **분리된 생성** — 요약/저장 프롬프트와 질문 생성 프롬프트를 분리한다.
-5. **추적 가능** — 각 질문에 `question_mode`를 기록한다.
+2. **`accurate_summary != no_question_needed`** — 기억 정확도와 회고 확장 가능성을 독립 판단한다.
+3. **유형 다양화** — `meaning_check`만 반복하지 않는다.
+4. **후보 생성과 검증 분리** — LLM이 곧바로 skip하지 말고 후보를 만든 뒤 검증한다.
+5. **사용자 프로필 정렬** — `user_conversation_profile.md`의 연상형·감각 중심 성향을 따른다.
+6. **추적 가능** — 각 질문에 `question_mode`와 decision trace를 남긴다.
 
 ---
 
-## 2. 질문 유형 분류
+## 2. archive_gap / reflective_handle
 
-### 2.1 meaning_check — 의미·기록 확인
+| 개념 | 의미 |
+|------|------|
+| `archive_gap` | 현재 기록을 정확히 저장하기 위해 부족한 정보 (`none` / `minor` / `major`) |
+| `reflective_handle_strength` | 정확한 기록 너머로 새 생각을 만들 원문 손잡이 (`none` / `weak` / `strong`) |
+
+### 결정 규칙
+
+```text
+hard_stop이 있으면 질문하지 않음
+
+archive_gap=major
+→ meaning_check 후보 생성 가능
+
+archive_gap=none 또는 minor
+AND reflective_handle_strength=strong
+→ association, contrast, value_probe, archive_decision,
+   memory_link, 제한적인 future_reflection 후보 생성 가능
+
+archive_gap=none이라고 전체 질문을 생략하지 않음
+```
+
+`interpretation_risk=low`, `unsupported_inferences=[]`는 **meaning_check 금지 조건**으로만 사용한다. 전체 질문 금지 조건으로 쓰지 않는다.
+
+`information_already_complete` 하나로 skip을 뭉개지 않는다. 최소 구분 사유:
+
+```text
+no_reflective_handle
+answered_already
+redundant_question
+low_salience_anchor
+category_mismatch
+off_topic
+low_expected_gain
+fatigue_keyword_detected
+question_rejected
+positive_reframe_risk
+max_questions_reached
+```
+
+---
+
+## 3. 질문 유형 분류
+
+### 3.1 meaning_check — 의미·기록 확인
 
 | 항목 | 내용 |
 |------|------|
 | **목적** | 요약·강조 포인트가 사용자 의도와 일치하는지 확인 |
-| **사용 조건** | 해석 여지가 있거나, `interpretation_risk` ≥ medium |
-| **예시** | “민원 전화 자체보다 ‘기다리는 시간’이 더 힘들다고 기록해도 될까요?” |
+| **사용 조건** | `archive_gap=major` 또는 `interpretation_risk` ≥ medium |
 | **피해야 할 상황** | 직전 질문도 meaning_check; 사용자가 이미 명확히 말함; 세션에서 이미 1회 사용 |
 
-**제한 규칙 (필수)**
+**제한 규칙**
 
 - 세션당 **최대 1회**
-- 최근 3개 질문 중 meaning_check **0회 초과 금지** (즉 연속 불가)
 - `interpretation_risk: low`이고 `unsupported_inferences`가 비어 있으면 **생성하지 않음**
 
----
-
-### 2.2 emotion_probe — 감정 탐색
-
-| 항목 | 내용 |
-|------|------|
-| **목적** | 원문에 감정 단서는 있으나 라벨이 불명확할 때 구체화 |
-| **사용 조건** | 신체 반응·톤·부정어 등 `emotion_evidence` 후보가 있으나 `user_emotions`가 비거나 모호 |
-| **예시** | “‘막막하다’고 하셨는데, 그게 답답함에 가까웠나요, 허탈함에 가까웠나요?” |
-| **피해야 할 상황** | 감정 단서 없음; 사용자가 감정 질문에 짧게 거부; 코칭式 “그 감정을 어떻게 다루셨나요” |
-
-**주의**: 두 선택지 모두 사용자 표현에서 파생할 것. 새 감정 단어를 만들지 않는다.
-
----
-
-### 2.3 association — 연상 확장
+### 3.2 association — 연상 확장
 
 | 항목 | 내용 |
 |------|------|
 | **목적** | 독서모임식 꼬리 질문으로 사고를 옆으로 확장 |
-| **사용 조건** | `key_phrases`에 생생한 명사·비유·장면이 있음; `reflection_value` ≥ medium |
-| **예시** | “‘복도 끝 형광등’이 떠올랐다고 하셨는데, 그 장면이 다른 기억의 무엇과 겹치나요?” |
-| **피해야 할 상황** | 사용자가 사건 마무리 의사; 주제가 이미 충분히 구체적; 연상이 기록 목적과 무관하게 멀어짐 |
+| **사용 조건** | reflective handle이 있고 핵심 앵커 salience ≥ medium |
+| **피해야 할 상황** | 이미 답한 내용; 낮은 중요도 주변 예시 확대 |
 
-**우선순위**: 이 사용자 프로필에서 **가장 선호되는 유형**. meaning_check 대신 association을 우선 고려.
+### 3.3 contrast / value_probe
 
----
+비교·가치 탐색은 **같은 추상화 수준**과 **공통 비교축**이 있을 때만 허용한다.
 
-### 2.4 memory_link — 과거 기억 연결
+- 거절: 콩국수 vs 감정 기반 추천
+- 허용: 음식명 기반 추천 vs 감정 기반 추천, 완성 우선 vs 상금 우선
 
-| 항목 | 내용 |
-|------|------|
-| **목적** | `recent_context` 또는 `related_past_patterns`와의 사실적 연결 제안 |
-| **사용 조건** | 최근 기록과 키워드·사람·프로젝트·감정 겹침이 명확 |
-| **예시** | “지난주 팀장 회의 기록에도 ‘말이 안 통한다’는 표현이 있었는데, 이번이랑 같은 지점인가요?” |
-| **피해야 할 상황** | 과거 기록 없음; 겹침이 억지; 연결을 확정적으로 단정 |
+### 3.4 memory_link / future_reflection / archive_decision / emotion_probe
 
-연결은 **질문**으로만 제시. “같은 패턴입니다”라고 쓰지 않는다.
+기존 목적을 유지한다. `archive_decision`은 여러 테마 중 기록 중심 선택에 쓴다.
 
 ---
 
-### 2.5 value_probe — 가치·선호 탐색
-
-| 항목 | 내용 |
-|------|------|
-| **목적** | 사용자가 이미 드러낸 trade-off·불편·선호의 축을 명확히 |
-| **사용 조건** | 두 가지 이상 가치가 충돌하는 듯한 발화; 선택의 이유가 암시됨 |
-| **예시** | “그때 더 신경 쓰인 건 속도였나요, 아니면 제대로 처리되는 느낌이었나요?” |
-| **피해야 할 상황** | 가치 판단을 에이전트가 먼저 제시; 도덕적 평가; “옳은 선택” 유도 |
-
----
-
-### 2.6 contrast — 대비·각도 전환
-
-| 항목 | 내용 |
-|------|------|
-| **목적** | 같은 사건을 다른 시점·역할·조건에서 다시 보게 함 |
-| **사용 조건** | 사건은 있으나 관찰이 한쪽면에 치우침 |
-| **예시** | “그날 밤이랑 지금 이야기할 때, 그 상황에서 가장 선명한 게 달라졌나요?” |
-| **피해야 할 상황** | 사건 자체가 아직 불명확 (먼저 사실 확인); 대비가 인위적 |
-
----
-
-### 2.7 future_reflection — 미래 회고 각도
-
-| 항목 | 내용 |
-|------|------|
-| **목적** | 나중에 다시 읽을 때 남기고 싶은 초점을 사용자가 고르게 함 |
-| **사용 조건** | `reflection_value` ≥ medium; 대화가 어느 정도 열림; 저장 직전 보조 질문 |
-| **예시** | “한 달 뒤 다시 읽는다면, 오늘 말 중 어떤 부분이 가장 먼저 떠오르면 좋겠나요?” |
-| **피해야 할 상황** | 미래 감정·행동 계획 예측; “앞으로 어떻게 하실 건가요”; 자기계발 목표 설정 |
-
----
-
-### 2.8 archive_decision — 저장 범위·형태 결정
-
-| 항목 | 내용 |
-|------|------|
-| **목적** | 무엇을 `memory_candidate`에 넣을지, 무엇을 부수적으로 둘지 사용자가 결정 |
-| **사용 조건** | `emerging_themes`가 2개 이상; 한 세션에 여러 기억 후보 |
-| **예시** | “오늘 이야기 중 ‘용역업체 실수’와 ‘기다림의 시간’ 중 어떤 걸 이번 기록의 중심으로 둘까요?” |
-| **피해야 할 상황** | 단일 사건·단일 테마로 이미 명확; meaning_check와 중복 (기록 문구 확인만 반복) |
-
-`archive_decision`은 **구조 선택**이고, `meaning_check`는 **문구 동의**다. 둘을 같은 세션에 쓰지 않는다.
-
----
-
-## 3. 질문 모드 선택 로직 (개념)
-
-질문 생성 전 분석 단계에서 다음 신호를 추출한다.
-
-| 신호 | 설명 |
-|------|------|
-| `topic` | 핵심 주제 (1문장) |
-| `emotion` | 감지된 감정 + 근거 유무 |
-| `unresolved_point` | 미완성·모호·자기모순처럼 보이는 지점 |
-| `possible_memory_value` | 장기 기억 후보 가치 (`low` / `medium` / `high`) |
-| `question_mode` | 이번에 생성할 질문 유형 |
-
-### 3.1 우선순위 매트릭스 (요약)
+## 4. 질문 후보 생성과 검증
 
 ```text
-interpretation_risk ≥ medium AND meaning_check 미사용
-  → meaning_check (1회 한정)
-
-unresolved_point 있음 AND 감정 단서 있음
-  → emotion_probe 또는 association
-
-recent_context 유사 AND memory_link 미사용
-  → memory_link
-
-key_phrases 생생 AND reflection_value ≥ medium
-  → association (최우선)
-
-emerging_themes ≥ 2
-  → archive_decision
-
-사건 명확 + 관찰 한쪽면
-  → contrast
-
-저장 직전 + 열린 대화
-  → future_reflection
-
-위에 해당 없음
-  → association 또는 contrast (meaning_check 금지)
+1. 원문에서 질문 가능한 앵커와 미탐색 각도를 찾음
+2. 질문 후보 1~3개 생성
+3. 후보별 품질 검증
+4. 가장 좋은 후보만 전송
+5. 전부 탈락하면 질문 없이 REVIEW
 ```
 
-### 3.2 meaning_check 억제 규칙 (코드·프롬프트 공통)
-
-```python
-# 개념적 의사코드 — 과거 구현 계획은 archive/plans/reflection_agent_change_plan.md 참고
-
-def can_use_meaning_check(session: QuestionSession) -> bool:
-    if session.meaning_check_count >= 1:
-        return False
-    if session.last_question_mode == "meaning_check":
-        return False
-    if session.draft.interpretation_risk == "low":
-        return False
-    if not session.draft.unsupported_inferences:
-        return False
-    return True
-```
-
----
-
-## 4. 좋은 질문 / 나쁜 질문
-
-### 4.1 공통 품질 기준
-
-| 좋음 | 나쁨 |
-|------|------|
-| 사용자 표현 인용 | 일반론적 자기계발 질문 |
-| 열린 확장 (연상·대비) | 닫힌 예/아니오만 반복 |
-| 사실·관찰 중심 | 가치 판단·조언 요청 |
-| 한 번에 한 가지 초점 | 여러 질문을 한 문장에 |
-| 피로 신호 시 중단 | “조금만 더” 반복 |
-
-### 4.2 유형별 예시 확장
-
-**association**
-
-- 좋음: “‘종이 냄새’가 나는 순간이 있다고 하셨는데, 그게 어떤 장면과 붙어 있나요?”
-- 나쁨: “그 경험의 의미는 무엇인가요?”
-
-**memory_link**
-
-- 좋음: “예전에 적으신 ○○ 기록에도 ‘책임이 모호하다’는 말이 있었는데, 이번 상황과 같은 느낌인가요?”
-- 나쁨: “또 같은 실수를 반복하고 계시네요. 왜 그럴까요?”
-
-**contrast**
-
-- 좋음: “회의 중에 느낀 것과, 지금 다시 말할 때 느낌이 같은가요?”
-- 나쁨: “그때는 부정적이었지만 지금은 긍정적으로 바뀌었죠?”
-
----
-
-## 5. 세션 상태 추적
-
-질문 생성 시 세션에 유지할 메타데이터:
-
-| 필드 | 용도 |
-|------|------|
-| `questions_asked` | 이번 세션 질문 수 |
-| `question_modes_used` | 유형 목록 (중복·연속 방지) |
-| `meaning_check_count` | meaning_check 횟수 |
-| `last_question_mode` | 직전 유형 |
-| `user_fatigue_signals` | 짧은 답, 거부, 중단 키워드 |
-
-피로 신호가 감지되면 `needs_followup: false`로 전환하고 REVIEW로 진행한다.
-
----
-
-## 6. 출력 스키마 (질문 생성 단계)
-
-질문 전용 API/함수의 JSON 출력 예:
+후보 필드:
 
 ```json
 {
-  "topic": "팀 회의 후 불편함",
-  "emotion": {
-    "labels": ["답답함"],
-    "evidence_strength": "medium"
-  },
-  "unresolved_point": "말이 안 통한다는 느낌의 구체적 순간",
-  "possible_memory_value": "medium",
-  "question_mode": "association",
-  "followup_question": "‘말이 안 통한다’고 하셨는데, 그때 떠올랐던 특정 장면이나 소리가 있나요?",
-  "needs_followup": true,
-  "reasoning": "감정 단서는 있으나 장면이 얇음. 연상형 확장이 적합."
+  "grounding_quote": "",
+  "anchor": "",
+  "anchor_salience": "low | medium | high",
+  "unexplored_dimension": "",
+  "question_mode": "",
+  "candidate_question": "",
+  "expected_reflective_gain": "low | medium | high",
+  "already_answered": false,
+  "same_abstraction_level": true,
+  "comparison_axis": ""
 }
 ```
 
-`reasoning`은 디버그·로그용. Telegram 사용자에게는 보내지 않는다.
+검증 조건:
 
----
-
-## 7. 기존 프롬프트와의 관계
-
-| 현재 | 변경 후 |
-|------|---------|
-| `memory_archive_system_prompt.txt`에 후속 질문 규칙 포함 | 요약 전용으로 축소; `needs_followup`/`followup_question` 제거 또는 비활성 |
-| `analyze_recording()` 단일 호출 | `analyze_recording()` + `generate_question()` 분리 |
-| `fidelity.py`가 요약만 검증 | 질문 품질 검증 함수 추가 (`validate_question()`) |
-
-금지 표현·성장 서사 규칙은 **양쪽 프롬프트 모두**에 유지한다.
-
----
-
-## 8. Safety Rules (해석·질문 안전 규칙)
-
-질문 생성과 해석 알고리즘의 공통 안전 장치.  
-프롬프트(`question_generation_prompt.txt`, 레거시 참고용 `legacy/memory_extraction_prompt.txt`)와 코드(`question.py`, `fidelity.py`) 모두에 반영한다.
-
-### Rule 1. 기억 불가·정보 없음은 추가 질문 금지
-
-다음 표현은 **답변 종료 신호**로 취급한다.
-
-- 기억이 안 난다
-- 잘 모르겠다
-- 떠오르지 않는다
-- 생각이 안 난다
-- 기억이 흐릿하다
-- 더 말할 것이 없다
-- 모르겠네
-
-이 경우:
-
-1. 추가 질문을 생성하지 않는다.
-2. 의미를 추론하려고 하지 않는다.
-3. 사용자가 기억하지 못한다는 사실 자체를 기록한다.
-
-**좋은 예**
-
-사용자:  
-"신규 때도 조직이 바뀐 적은 있는데 기억이 안 난다."
-
-AI:  
-"신규 시절에도 조직 변화 경험은 있었지만 구체적인 기억은 떠오르지 않는다고 말했다."
-
-**나쁜 예**
-
-- "그때 어떤 감정이 기억나나요?"
-- "어떤 장면이 떠오르나요?"
-
----
-
-### Rule 2. 조건문은 관계로 변환하지 않는다
-
-다음과 같은 문장을 주의한다.
-
-- A가 B가 되면
-- A가 B가 된다면
-- A가 승진하면
-- A가 팀장이 되면
-- A가 왕주임이 되면
-
-이 문장은 사람 관계가 아니라 **가정된 상황**일 수 있다.
-
-**절대** "연이 왕주임", "왕주임인 연이"처럼 새로운 사람 이름이나 관계를 만들어내지 않는다.
-
-**대신**
-
-```yaml
-people:
-  - "연이"
-conditions:
-  - "연이가 왕주임이 되는 상황을 가정함"
+```text
+already_answered=false
+anchor_salience=medium 이상
+expected_reflective_gain=medium 이상
+비교 질문이면 same_abstraction_level=true 및 comparison_axis 존재
 ```
 
-처럼 저장한다.
+---
 
-의미가 불명확하면 반드시 질문한다.
+## 5. 질문 수와 두 번째 질문 게이트
 
-예:  
-"'연이 왕주임이 되면'은  
-① 연이라는 사람이 왕주임이 되는 경우  
-② 왕주임인 연이라는 사람  
-중 어느 의미인가요?"
+`REFLECTION_MAX_QUESTIONS=2`를 유지한다. 2회는 목표가 아니라 상한이다.
+
+두 번째 질문 허용 조건:
+
+```text
+첫 응답 유형이 followup_answer
+첫 답변에서 새로운 정보가 실제로 추가됨
+새로운 unresolved point 또는 strong reflective handle이 생김
+첫 질문의 단순 반복이 아님
+사용자 피로·중단·거부·정정 신호가 없음
+```
+
+차단: 원문 반복 답변, 패스, 질문 거부, 메타 피드백, 수정 요청, 피로 신호.
 
 ---
 
-### Rule 3. 수정 요청 시 이전 해석을 고집하지 않는다
+## 6. 후속 응답 분류
 
-사용자가 "잘못 이해했다", "그 뜻이 아니다", "문장이 이상하다"라고 말하면:
+FOLLOWUP 입력을 기억 원문에 넣기 전에 분류한다.
 
-1. 기존 해석이 틀렸을 가능성을 우선 인정한다.
-2. 기존 해석을 반복 표현하지 않는다.
-3. 수정 대상 필드만 교체(patch)한다.
-4. 사용자의 정정을 가장 우선적인 근거로 사용한다.
+```text
+followup_answer
+pass
+fatigue_or_stop
+question_rejection
+meta_feedback
+correction
+```
 
-| 금지 | 허용 |
-|------|------|
-| 기존 오해 → 사용자 수정 → 같은 오해를 표현만 바꿔 재출력 | 기존 오해 폐기 → 사용자 설명 반영 → 해당 필드만 수정 |
+- `followup_answer`만 기억 원문에 포함
+- `pass` / `fatigue_or_stop` / `question_rejection` / `meta_feedback`는 원문 제외 후 REVIEW
+- `question_rejection` / `meta_feedback`는 실패 기록
+- `correction`은 수정 흐름으로 전달
 
----
-
-### Rule 4. 후속 질문 생성 전 자기 검증
-
-후속 질문을 생성하기 전에 아래를 순서대로 검사한다.
-
-| # | 검사 |
-|---|------|
-| Q1 | 사용자가 이미 답한 내용인가? |
-| Q2 | 사용자가 기억하지 못한다고 말했는가? |
-| Q3 | 질문이 사용자의 말을 단순히 다른 표현으로 반복하는 것인가? |
-| Q4 | 질문이 미래 회고에 필요한 새로운 사실을 얻을 가능성이 낮은가? |
-
-**하나라도 YES면** 추가 질문을 하지 않는다. 대신 요약 생성, 저장 확인, 기록 종료로 진행한다.
-
-**원칙:** 질문 수를 늘리는 것보다 원문 왜곡을 줄이는 것이 더 중요하다. 후속 질문은 **최대 1회**만 허용한다.
+세션은 `original_user_texts`, `accepted_followup_answers`, `interaction_feedback`를 구분한다.
 
 ---
 
-### Rule 5. 부정 감정 직후 긍정 회상 질문 금지
+## 7. 엔티티 역할
 
-사용자가 다음과 같은 감정을 표현한 직후에는 긍정 회상, 반대 감정, 회복 경험을 묻지 않는다.
+```json
+{
+  "people": [],
+  "projects": [],
+  "tools": [],
+  "organizations": [],
+  "events": []
+}
+```
 
-- 한심하다
-- 걱정된다
-- 불안하다
-- 우울하다
-- 손에 잡히지 않는다
-- 아무것도 못 하겠다
-- 스트레스 받는다
-- 지친다
-- 무기력하다
-- 싫다
-- 괴롭다
-
-**금지 질문 예시**
-
-- "반대로 즐거웠던 순간은 언제인가요?"
-- "그럼에도 좋았던 점은 무엇인가요?"
-- "최근에 기분이 나아졌던 순간이 있나요?"
-- "이런 기분을 극복했던 경험이 있나요?"
-- "즐거움을 느꼈던 때는 언제였나요?"
-
-**허용되는 질문 예시**
-
-- "이 걱정이 무엇과 관련된 것인지 한 문장만 더 적을 수 있나요?"
-- "지금 기록에서 가장 남기고 싶은 표현은 '한심함'과 '걱정' 중 어느 쪽에 가까운가요?"
-- "추가 질문 없이 이 내용 그대로 요약할까요?"
-
-단, 사용자가 이미 "요약"을 입력했고 핵심 감정이 충분히 드러났다면 추가 질문하지 않고 바로 요약한다.
-
-**자동 감지 규칙**
-
-사용자 최근 메시지에 아래 표현이 포함되고, 봇 질문에 아래 표현이 포함되면 `inappropriate_positive_reframe` 위험으로 판단한다.
-
-| 사용자 신호 | 봇 질문 신호 |
-|-------------|--------------|
-| 걱정, 한심, 불안, 우울, 스트레스, 손에 잡히지 않아, 아무것도 못, 지침, 무기력, 괴로움 | 반대로, 즐거웠던, 좋았던, 나아졌던, 극복, 기분이 좋아졌던, 긍정적, 감사했던 |
-
-이 조합이 발생하면 해당 질문을 차단하거나 `interpretation_risk = "high"`로 표시한다.
+- `people`: 사람만. GPT/ChatGPT/Cursor 등 비인간은 제외
+- `projects`: 지속적으로 개발·관리되는 결과물 이름
+- `tools`: GPT, Cursor, Codex, Notion 등
+- `events`: 공모전·행사·프로그램
+- 공모전 이름을 특정 앱에 전역 매핑하지 않는다
 
 ---
 
-### Rule 6. 가치관이 핵심이면 사건보다 가치관을 우선 기록한다
+## 8. Safety Rules (현행 요약)
 
-이 프로젝트의 목표는 단순한 사건 기록이 아니라, 장기적으로 사용자의 삶의 패턴과 가치관을 발견하는 것이다.
+기존 Rule 1~6(기억 불가 종료, 조건문 오해석 금지, 수정 우선, 자기 검증, 긍정 재해석 금지, 가치관 우선)은 유지한다.
 
-사용자가 "무엇을 했는지"보다 "어떤 기준으로 판단했고, 무엇을 중요하게 여기는지"가 드러나면
-사건 나열이 아니라 **가치관을 `event_summary` 중심**에 둔다.
+추가 강조:
 
-**판단 우선순위**
+- 이미 답한 내용 → `answered_already`
+- 낮은 중요도 앵커 → `low_salience_anchor`
+- 추상화 수준 불일치 비교 → `category_mismatch`
+- 질문 피드백 → 기억 원문 제외
 
-- 판단 기준·가치관 문장이 사건 서술보다 더 길거나 더 많은 근거(`key_phrases`)를 차지하면
-  가치관 중심으로 요약하고 `memory_type = reflection_seed`, `reflection_seed_candidate = true`,
-  `reflection_value = high`로 설정한다.
-- 반복 가능한 가치 판단은 `value_tags`에 남긴다.
-  (예: 사용자 시간 절약, 편의성, 생산성, 다크패턴 거부, 불안 마케팅 거부)
-  - `사용자 시간 절약`: 제품·업무 절차에서 불필요한 시간·수고를 줄이는 가치.
-    "시간을 낭비"는 맥락 의존적이다. 앱·서비스·절차·반복 과정이 시간을 뺏는 맥락이면 태깅하고,
-    개인의 하루를 알차게 쓰지 못했다는 자기관리·자책 맥락이면 태깅하지 않는다.
-    코드: `is_user_time_saving_value()` (`fidelity.py`).
+**후속 질문은 최대 2회**이며, 2회째는 게이트 통과 시에만 허용한다.
 
-**reflection_seed 후보 신호**
-
-- 개발 철학 / 일에 대한 관점 / 인간관계 가치관
-- 반복될 가능성이 높은 판단 기준 / 프로젝트·강의·도구 선택 기준
-
-**미래/과거 시제 (동반 검사)**
-
-- `예정`, `신청했다`, `들을 예정`, `다음 주`, `다음 달`, `계획이다` 표현이 있으면
-  완료된 사실처럼 요약하지 말고 `temporal_status`를 `future` 또는 `mixed`로 표시한다.
-
-**나쁜 예 / 좋은 예**
-
-- 나쁨: "토스 미니앱을 확인하고 다른 강의로 수강 변경했다." (사건만 나열)
-- 좋음: "사람들의 일을 줄이고 편의성을 주는 것을 만들고 싶어, 다크패턴·불안 마케팅을 쓰는 앱에
-  거리낌을 느꼈고 원하는 방향과 맞지 않아 강의를 바꿨다." (가치관 중심)
-
-**자동 감지**
-
-`fidelity.draft_hides_value(draft, source)`가 True면
-`failure_recorder.record_value_hidden_by_event_failure(...)`로 스냅샷을 남긴다.
+부정 감정 직후 긍정 회상 질문(Rule 5)은 계속 금지한다.
 
 ---
 
-## 9. 테스트 관점
+## 9. Decision Trace / 관측 지표
+
+```json
+{
+  "engine": "reflection",
+  "question_round": 1,
+  "archive_gap": "none",
+  "reflective_handle_strength": "strong",
+  "candidate_count": 3,
+  "selected_anchor": "",
+  "selected_question_mode": "",
+  "rejected_candidates": [{"question": "", "reason": "answered_already"}],
+  "second_question_allowed": false,
+  "second_question_gate_reason": "",
+  "sent": false,
+  "final_reason": ""
+}
+```
+
+관측 지표(질문 강제 생성 금지):
+
+```text
+question_candidate_not_generated
+question_candidate_generated
+question_candidate_rejected
+question_sent
+second_question_gate_passed
+second_question_gate_rejected
+```
+
+---
+
+## 10. 테스트 관점
 
 | 케이스 | 기대 |
 |--------|------|
-| interpretation_risk: low | meaning_check 생성 안 함 |
-| meaning_check 1회 후 | 다음 질문은 association 등 |
-| 감정 단서 없음 | emotion_probe 생성 안 함 |
-| recent_context 비어 있음 | memory_link 생성 안 함 |
-| “됐어” / “모르겠어” | needs_followup: false |
-| 생생한 key_phrase | association 우선 |
-| 부정 감정 후 "반대로 즐거웠던" 질문 | 차단, needs_followup: false |
-| "요약" + 걱정·자기비판 충분 | 추가 질문 없이 요약 |
-| "그런건 묻지마" | 직전 봇 질문을 failure snapshot으로 저장 |
+| 원문에 이미 연결 설명 | 같은 연결 재질문 차단 |
+| archive_gap=none + strong handle | 확장 질문 가능 |
+| 콩국수 vs 감정 기반 추천 | category_mismatch |
+| 메타 피드백 | 원문 제외 + failure 기록 |
+| 패스/거부 | 두 번째 질문 없음 |
+| GPT | people 제외, tools 포함 |
+| 여름 메뉴 추천앱 + 토스 공모전 | project / event 분리 |
 
-구현 시 `tests/test_question_generation.py`, `tests/test_question_safety_rules.py`에 위 케이스를 추가한다.
-
----
-
-## 9. Memory Extraction & Correction Rules (메모 추출·수정 규칙)
-
-질문 생성(Section 8)과 별도로, 메모 추출·수정 단계(`memory_archive_system_prompt.txt`, `fidelity.py`)에 적용한다.
-
-### Rule 7. 수정 요청 검증
-
-사용자가 "수정"을 요청하면 출력 직전에 요청된 수정사항을 체크리스트로 만든다.
-
-예)
-
-- reflection_value 수정 완료
-- temporal_status 수정 완료
-- memory_type 수정 완료
-- value_tags 삭제 완료 (요청한 태그 제외)
-
-하나라도 반영되지 않았으면 출력하지 않고 다시 수정한다.  
-코드: `verify_edit_requests()`, `apply_edit_patches()` (`fidelity.py`), `analyze_recording()` 재시도 (`service.py`).
-`validate_draft()`는 사용자가 제외한 `value_tags`를 원문 키워드로 재주입하지 않는다.
-
----
-
-### Rule 8. 원문 우선 원칙
-
-모든 분류는
-
-- `event_summary`
-- GPT가 작성한 문장
-
-이 아니라 **사용자의 원문 발화**를 기준으로 수행한다.
-
-"~라고 말했다" 같은 요약 문체는 temporal_status 판단 근거로 사용하지 않는다.
-
----
-
-### Rule 9. 현재 지향 표현
-
-다음 표현은 기본적으로 `temporal_status=current`로 분류한다.
-
-- ~하고 싶다
-- ~가 되고 싶다
-- ~를 추구한다
-- ~를 원한다
-- ~를 바라게 된다
-
-반대로 실제로 끝난 사건만 `past`로 분류한다 (예: 어제 화가 났다, 회의를 했다).
-
-코드: `CURRENT_ORIENTED_MARKERS`, `infer_temporal_status()`.
-
----
-
-### Rule 10. 최종 일관성 검사
-
-최종 JSON 출력 전 다음 항목들의 일관성을 자동 검증한다.
-
-- topic
-- event_summary
-- memory_type
-- temporal_status
-- reflection_value
-- reflection_seed_candidate
-
-예: `memory_type=reflection_seed`인데 `reflection_value=low`이거나, 원문이 current 지향인데 `temporal_status=past`이면 원문을 다시 검토한다.
-
-코드: `check_consistency()`, `enforce_consistency()`.
-
----
-
-### Rule 11. event_summary 품질 (현재 지향)
-
-"사용자는 ~~라고 말했다" 형식에 머무르지 않고, 의미를 유지한 채 자연스럽게 읽히게 작성한다.
-
-- 나쁨: "사용자는 ... 되고 싶다고 말했다."
-- 좋음: "사용자는 ... 되고 싶다는 바람을 기록했다."
-
-주의: 의미 추가·심리 해석·가치 판단 금지.
-
-코드: `naturalize_event_summary()`.
-
----
-
-### Rule 12. reflection_value 보완 (인간상·가치관)
-
-다음 유형은 사건보다 회고 가치가 높다. `reflection_seed` 후보와 `reflection_value=medium` 이상을 적극 검토한다.
-
-- 인간상 / 삶의 기준 / 가치관 / 장기 목표
-- 반복적으로 추구하는 태도 / 신념 / 되고 싶은 모습
-
-코드: `HUMAN_IDEAL_MARKERS`, `apply_reflection_value_heuristics()`.
-
----
-
-## 10. 테스트 관점 (메모 추출 회귀)
-
-| 케이스 | 기대 |
-|--------|------|
-| "평가에 신경쓰지 않는 사람이 되고 싶다" | memory_type=reflection_seed, reflection_seed_candidate=true, reflection_value=medium, temporal_status=current |
-| 수정: reflection_value 상향 + temporal_status=current | 두 항목 모두 반영; 일부만 수정된 JSON 출력 금지 |
-| event_summary "~라고 말했다" + current 원문 | "바람을 기록했다" 등 자연스러운 문체로 보정 |
-| memory_type=reflection_seed + reflection_value=low | enforce_consistency가 medium으로 보정 |
-| 러닝 일지 + "시간을 낭비한다"(자기관리) | value_tags에 "사용자 시간 절약" 없음 |
-| 수정: value_tags에서 "사용자 시간 절약" 삭제 | 삭제 유지; validate_draft 키워드 재주입 금지 |
-
-구현: `tests/test_human_ideal_regression.py`, `tests/test_fidelity.py`.
-실패 스냅샷: `data/evaluation/interpretation_failures.jsonl` (`telegram_20260710_running_value_tag_correction`).
+구현: `tests/test_question_quality_regression.py`, `tests/test_question_quality_replay.py`.  
+관련 incident: `docs/archive/incidents/question_quality_and_feedback_contamination_2026-07-12.md`.
