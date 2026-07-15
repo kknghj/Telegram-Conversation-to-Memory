@@ -1,0 +1,79 @@
+{
+  "dataset_id": "ds_20260715_134233",
+  "created_at": "2026-07-15T13:42:39.781212+00:00",
+  "seed": 20260715,
+  "case_count": 30,
+  "status_counts": {
+    "saved": 29,
+    "cancelled": 1
+  },
+  "category_counts": {
+    "status": {
+      "saved": 29,
+      "cancelled": 1
+    },
+    "length_bucket": {
+      "medium": 13,
+      "long": 16,
+      "short": 1
+    },
+    "project_mentioned": {
+      "False": 21,
+      "True": 9
+    },
+    "projects_empty": {
+      "True": 24,
+      "False": 6
+    },
+    "interpretation_risk": {
+      "low": 25,
+      "medium": 5
+    },
+    "had_followup": {
+      "False": 28,
+      "True": 2
+    },
+    "has_cancellation_reason": {
+      "False": 29,
+      "True": 1
+    },
+    "record_type": {
+      "emotion": 14,
+      "project": 11,
+      "idea": 2,
+      "other": 1,
+      "relation": 1,
+      "work": 1
+    },
+    "user_complaint": {
+      "False": 30
+    },
+    "possible_missing_project_tag": {
+      "False": 27,
+      "True": 3
+    }
+  },
+  "selection_rules": {
+    "statuses": [
+      "saved",
+      "cancelled"
+    ],
+    "require_nonempty_user_texts": true,
+    "dedupe_by": "normalized user_texts + conversation",
+    "exclude_active_by_default": true,
+    "limit": 30,
+    "seed": 20260715,
+    "scarcity": {
+      "requested_limit": 30,
+      "available_unique": 36,
+      "selected": 30,
+      "shortfall": 0
+    },
+    "exclusions": {
+      "empty_user_texts": 0,
+      "duplicate_content": 0,
+      "total_rows": 36
+    }
+  },
+  "source_table": "drafts"
+}

@@ -1,0 +1,230 @@
+{
+  "run_id": "run_20260715_134422",
+  "created_at": "2026-07-15T14:10:12.055395+00:00",
+  "git_commit": "8c443c9bf95c5692fda8c9346539b92a44076b32",
+  "prompt_hashes": {
+    "memory": "7ee1690910065a4cbffb2046da6fea7e089558deb6e01195abbcec2e6a607414",
+    "question": "6a124533dc79bb9399e503b509380aca47f467db1b0a5ce10f97b039cd1df3d1"
+  },
+  "models": [
+    "gpt-4o-mini",
+    "gpt-5.6-luna",
+    "gpt-5.6-terra"
+  ],
+  "seed": 20260715,
+  "blind_global_alias_to_model": {
+    "A": "gpt-5.6-luna",
+    "B": "gpt-5.6-terra",
+    "C": "gpt-4o-mini"
+  },
+  "case_model_order": {
+    "case_001": [
+      "gpt-4o-mini",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna"
+    ],
+    "case_002": [
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "gpt-4o-mini"
+    ],
+    "case_003": [
+      "gpt-5.6-luna",
+      "gpt-5.6-terra",
+      "gpt-4o-mini"
+    ],
+    "case_004": [
+      "gpt-4o-mini",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna"
+    ],
+    "case_005": [
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "gpt-4o-mini"
+    ],
+    "case_006": [
+      "gpt-5.6-luna",
+      "gpt-5.6-terra",
+      "gpt-4o-mini"
+    ],
+    "case_007": [
+      "gpt-4o-mini",
+      "gpt-5.6-luna",
+      "gpt-5.6-terra"
+    ],
+    "case_008": [
+      "gpt-5.6-terra",
+      "gpt-4o-mini",
+      "gpt-5.6-luna"
+    ],
+    "case_009": [
+      "gpt-5.6-luna",
+      "gpt-4o-mini",
+      "gpt-5.6-terra"
+    ],
+    "case_010": [
+      "gpt-5.6-luna",
+      "gpt-4o-mini",
+      "gpt-5.6-terra"
+    ],
+    "case_011": [
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "gpt-4o-mini"
+    ],
+    "case_012": [
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "gpt-4o-mini"
+    ],
+    "case_013": [
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "gpt-4o-mini"
+    ],
+    "case_014": [
+      "gpt-5.6-terra",
+      "gpt-4o-mini",
+      "gpt-5.6-luna"
+    ],
+    "case_015": [
+      "gpt-5.6-luna",
+      "gpt-5.6-terra",
+      "gpt-4o-mini"
+    ],
+    "case_016": [
+      "gpt-4o-mini",
+      "gpt-5.6-luna",
+      "gpt-5.6-terra"
+    ],
+    "case_017": [
+      "gpt-5.6-luna",
+      "gpt-5.6-terra",
+      "gpt-4o-mini"
+    ],
+    "case_018": [
+      "gpt-5.6-luna",
+      "gpt-4o-mini",
+      "gpt-5.6-terra"
+    ],
+    "case_019": [
+      "gpt-5.6-luna",
+      "gpt-4o-mini",
+      "gpt-5.6-terra"
+    ],
+    "case_020": [
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "gpt-4o-mini"
+    ],
+    "case_021": [
+      "gpt-5.6-terra",
+      "gpt-4o-mini",
+      "gpt-5.6-luna"
+    ],
+    "case_022": [
+      "gpt-5.6-luna",
+      "gpt-4o-mini",
+      "gpt-5.6-terra"
+    ],
+    "case_023": [
+      "gpt-5.6-luna",
+      "gpt-4o-mini",
+      "gpt-5.6-terra"
+    ],
+    "case_024": [
+      "gpt-4o-mini",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna"
+    ],
+    "case_025": [
+      "gpt-5.6-luna",
+      "gpt-4o-mini",
+      "gpt-5.6-terra"
+    ],
+    "case_026": [
+      "gpt-5.6-luna",
+      "gpt-5.6-terra",
+      "gpt-4o-mini"
+    ],
+    "case_027": [
+      "gpt-4o-mini",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna"
+    ],
+    "case_028": [
+      "gpt-4o-mini",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna"
+    ],
+    "case_029": [
+      "gpt-4o-mini",
+      "gpt-5.6-luna",
+      "gpt-5.6-terra"
+    ],
+    "case_030": [
+      "gpt-5.6-luna",
+      "gpt-4o-mini",
+      "gpt-5.6-terra"
+    ]
+  },
+  "model_access": [
+    {
+      "model": "gpt-4o-mini",
+      "ok": true,
+      "request_config": {
+        "model": "gpt-4o-mini",
+        "messages": [
+          {
+            "role": "user",
+            "content": "ping"
+          }
+        ],
+        "max_tokens": 5,
+        "temperature": 0
+      },
+      "error": null
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "ok": true,
+      "request_config": {
+        "model": "gpt-5.6-luna",
+        "messages": [
+          {
+            "role": "user",
+            "content": "ping"
+          }
+        ],
+        "max_completion_tokens": 4096
+      },
+      "error": null
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "ok": true,
+      "request_config": {
+        "model": "gpt-5.6-terra",
+        "messages": [
+          {
+            "role": "user",
+            "content": "ping"
+          }
+        ],
+        "max_completion_tokens": 4096
+      },
+      "error": null
+    }
+  ],
+  "case_count": 30,
+  "result_count": 90,
+  "pricing_verified_at": "2026-07-15",
+  "fairness": {
+    "same_prompts": true,
+    "same_postprocessing": true,
+    "same_schema": true,
+    "model_via_function_arg": true,
+    "openai_model_env_untouched": true
+  }
+}

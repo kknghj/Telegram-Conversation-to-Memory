@@ -2,17 +2,29 @@
 
 ## 현재 검증 상태
 
-- 기준일: 2026-07-12
+- 기준일: 2026-07-15
 - 0단계 평가 기반 정리 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
 - 1단계 기억 기질 품질 — `passed` (근거: 105개 기억 및 사용자 직접 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
-- 2단계 회고 씨앗 수집 — `conditional_pass` (근거: 질문 품질/피드백 분리 구현, 두 실제 대화 fixture replay·회귀 테스트 통과, `docs/archive/incidents/question_quality_and_feedback_contamination_2026-07-12.md`, 2026-07-12. live 관찰 미완)
+- 2단계 회고 씨앗 수집 — `conditional_pass` (근거: 질문 품질/피드백 분리 구현, fixture replay·회귀 테스트 통과, 2026-07-12. 2026-07-15: 프롬프트 규칙 감사·모델 비교 평가 도구·단위 테스트 313 passed. live 관찰·사람 모델 평가 미완)
 - 3단계 Reporter 후보 발견 — `passed` (근거: 20개 후보 사용자 전수 검토, `data/evaluation/reporter_poc_2026-07-11.json`, 2026-07-11)
 - 4단계 Style Editor 후킹/재미 — `conditional_pass` (근거: 10개 후보 사용자 전수 검토, 관찰형·후킹형 선호 9/10, 최종 `too_much` 0/10, `taste_fit=high|medium` 9/10, `data/evaluation/style_editor_poc_2026-07-11.json`, 2026-07-11. 다음 라운드의 `HOOK_TOO_FLAT` 감소 여부는 미검증)
-- 현재 검증 단계: **2단계 회고 씨앗 수집 — `conditional_pass`** (질문 품질 사고 수정 후 live 검증 대기)
-- 다음 검증 행동: 최근 live 신규 기억 20건에서 중복 질문·메타 피드백 원문 유입·엔티티 오분류·두 번째 질문 게이트 동작을 관찰한다.
-- 진입 제한: 질문률을 코드로 강제하지 않으며, `question_outcome` trace로 생성/거절 사유만 관측한다.
+- 현재 검증 단계: **2단계 회고 씨앗 수집 — `conditional_pass`**
+- 다음 검증 행동: `reports/model_comparison/` 정적 HTML에서 30건×3모델 블라인드 평가를 완료하고, 병행으로 live 신규 기억의 중복 질문·메타 피드백·엔티티 오분류를 관찰한다.
+- 진입 제한: 질문률을 코드로 강제하지 않으며, `question_outcome` trace로 생성/거절 사유만 관측한다. 모델 비교는 평가 전용이며 production drafts/memory에 쓰지 않는다.
 
 이 블록은 검증 진도의 단일 요약이다. 새 증거가 생기면 상태, 근거, 날짜, 다음 검증 행동을 함께 갱신하며 다음 검증 행동은 항상 하나만 유지한다.
+
+### 2026-07-15 프롬프트 감사·모델 비교 평가 도구
+
+- 목적: 질문·해석 규칙 중복/충돌 정리 후, 동일 사례·동일 규칙으로 `gpt-4o-mini` / `gpt-5.6-luna` / `gpt-5.6-terra`를 공정 비교
+- 산출물: `reports/prompt_audit/`, `docs/model_comparison_experiment.md`, `conversation_to_memory/evaluation/`
+- 데이터셋: Supabase `drafts` 읽기 전용 추출 `ds_20260715_seed` (30건, seed=20260715, saved 29 / cancelled 1). 원문 `cases.jsonl`은 gitignore
+- 모델 접근: 세 모델 모두 probe `ok=True` (동일 `OPENAI_API_KEY`)
+- 실행: `reports/model_comparison/run_20260715_seed` — 90/90 성공 (초안+첫 질문). GPT-5 계열 초기 빈 응답은 `max_completion_tokens` 확대 후 재실행으로 해소
+- 자동 검증: `pytest -q` 313 passed, 1 skipped (`model_comparison_live`)
+- 판정: 도구·규칙 정리·배치 실행은 완료. 사람 블라인드 평가·운영 모델 결정은 미완 → 2단계 전체는 계속 `conditional_pass`
+- 문서: `docs/model_comparison_experiment.md`
+- 비교 화면: `reports/model_comparison/run_20260715_seed/comparison.html`
 
 ### 2026-07-12 질문 품질·피드백 오염 수정
 

@@ -5,3 +5,13 @@ __pycache__/
 .pytest_cache/
 data/memories/*.json
 data/replay/*.txt
+
+# Model comparison evaluation — source text must not be committed
+data/evaluation/model_comparison/**/cases.jsonl
+data/evaluation/model_comparison/**/raw_*
+reports/model_comparison/**/review*.json
+reports/model_comparison/**/checkpoints/
+reports/model_comparison/**/comparison*.html
+reports/model_comparison/**/results.jsonl
+.pytest-tmp/
+.test-run-verify-maintenance-123/

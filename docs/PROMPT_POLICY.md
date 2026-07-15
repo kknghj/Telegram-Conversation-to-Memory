@@ -1,5 +1,10 @@
 # Prompt Policy
 
+> **질문 정책 위임:** 후속 질문의 유형·세션 상한·게이트·확장 질문 허용은
+> [`docs/question_strategy.md`](question_strategy.md)가 canonical이다.
+> 이 문서는 **기억 초안 추출** 프롬프트 정책만 다룬다.
+> (구 정책의 "정확도 확인용 질문 1개"는 `REFLECTION_AGENT_ENABLED=false` 레거시 경로 설명이다.)
+
 ## 시스템 역할 정의
 
 프롬프트 파일: `conversation_to_memory/prompts/memory_archive_system_prompt.txt`
@@ -22,46 +27,34 @@ GPT에게 부여하는 역할:
 
 - 원문에 있는 **사건·감정·맥락** 정리
 - 원문 근거가 있는 **감정 추출** (`emotion_evidence` 필수)
-- 원문 기록 **정확도 확인**용 후속 질문 1개
 - 불확실한 해석 → `unsupported_inferences` + `interpretation_risk`
+- `memory_candidate` / `model_interpretation` 분리
 
 ## JSON 출력 정책
 
-모든 분석 결과는 단일 JSON으로 반환:
+모든 분석 결과는 단일 JSON으로 반환한다. 전체 스키마는 runtime 프롬프트를 따른다.
+운영에서 reflection agent가 켜져 있으면 `needs_followup`/`followup_question`은 코드가 비운다.
+질문 JSON 스키마는 `question_generation_prompt.txt`와 `question_strategy.md`를 본다.
 
-```json
-{
-  "topic": "",
-  "event_summary": "",
-  "user_emotions": [],
-  "emotion_evidence": [],
-  "people": [],
-  "projects": [],
-  "tags": [],
-  "memory_candidate": "",
-  "interpretation_risk": "low | medium | high",
-  "unsupported_inferences": [],
-  "needs_followup": true,
-  "followup_question": ""
-}
-```
-
-### 필드 정책
+### 필드 정책 (초안)
 
 - **event_summary**: 사건 중심, 3~5문장, 포장 금지
 - **memory_candidate**: 저장 가치 있는 한 덩어리, 성장 서사 금지
-- **needs_followup**: 충분히 말했으면 `false`
-- **followup_question**: `needs_followup=true`일 때만 1개
+- **model_interpretation**: 에이전트 해석 (사실과 분리)
+- **needs_followup / followup_question**: 레거시 호환 필드. 운영 경로에서는 질문 단계가 담당
 
-## 후속 질문 생성 규칙
+## 후속 질문 (요약)
 
-### 좋은 질문
+현행 규칙의 상세·예시는 `question_strategy.md`에 있다.
 
-- "민원 전화 자체보다 '기다리는 시간'이 더 힘들다고 기록해도 될까요?"
-- "용역업체 실수 때문에 억울했다는 점을 핵심으로 남기면 될까요?"
-- "이 기록은 감정 기록에 가깝나요, 업무 스트레스 기록에 가깝나요?"
+| 구분 | 값 |
+|------|-----|
+| 한 번에 보내는 질문 | 1개 |
+| 세션 상한 | 최대 2회 |
+| 두 번째 질문 | second-question gate 통과 시만 |
+| 목적 | 정확도 확인 + 회고 확장 (association 등) |
 
-### 나쁜 질문
+### 나쁜 질문 (공통 금지 — 초안·질문 모두)
 
 - "이 경험을 통해 무엇을 배웠나요?"
 - "힘든 상황을 견뎌낸 자신에게 어떤 말을 해주고 싶나요?"
@@ -84,11 +77,12 @@ GPT에게 부여하는 역할:
 - `recent_context` — 최근 기록 (최대 3건)
 - `cancelled_draft` — 취소된 초안
 - `cancellation_reason` — 취소 당시 사용자 발화
-- `followup_already_asked` — 후속 질문 1회 제한
+- `followup_already_asked` — 레거시 경로에서 초안 모델에 질문 이미 사용됨을 알림
 
 ## Temperature
 
 - 분석/추출: `0.2` (일관성·충실도 우선)
+- 질문 생성: `0.45` (유형 다양성)
 - 창의적 재해석 방지
 
 ## 레거시 프롬프트

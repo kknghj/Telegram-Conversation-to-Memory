@@ -66,8 +66,19 @@ def _get_client() -> OpenAI:
     return OpenAI(api_key=api_key)
 
 
+def resolve_memory_model(model: str | None = None) -> str:
+    """모델 선택: 함수 인자 > OPENAI_MEMORY_MODEL > OPENAI_MODEL > 기본값."""
+    if model and str(model).strip():
+        return str(model).strip()
+    return (
+        os.getenv("OPENAI_MEMORY_MODEL", "").strip()
+        or os.getenv("OPENAI_MODEL", "").strip()
+        or "gpt-4o-mini"
+    )
+
+
 def _get_model() -> str:
-    return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    return resolve_memory_model()
 
 
 def _conversation_to_messages(conversation: list[dict]) -> list[dict]:
@@ -98,7 +109,10 @@ def _build_context_block(
 
     if followup_already_asked:
         parts.append("## 제약")
-        parts.append("후속 질문은 이미 1회 사용됨. needs_followup=false, followup_question=\"\" 로 설정.")
+        parts.append(
+            "레거시 경로: 후속 질문이 이미 사용됨. "
+            "needs_followup=false, followup_question=\"\" 로 설정."
+        )
 
     return "\n".join(parts)
 
@@ -163,11 +177,29 @@ def analyze_recording(
     followup_already_asked: bool = False,
     edit_instruction: str = "",
     previous_draft: dict | None = None,
+    model: str | None = None,
+    return_meta: bool = False,
 ) -> dict:
-    """사용자 원문을 분석해 draft JSON 생성."""
+    """사용자 원문을 분석해 draft JSON 생성.
+
+    model이 주어지면 OPENAI_MODEL을 덮어쓰지 않고 해당 요청에만 사용한다.
+    return_meta=True이면 {"draft", "usage", "request_config", "model", "raw_usage"}를 반환한다.
+    """
+    from conversation_to_memory.evaluation.openai_compat import (
+        chat_completion_create,
+        extract_usage,
+    )
+
     client = _get_client()
+    selected_model = resolve_memory_model(model)
     system = _load_prompt("memory_archive_system_prompt.txt")
     source_text = "\n".join(user_texts)
+    last_meta: dict[str, Any] = {
+        "usage": {},
+        "raw_usage": None,
+        "request_config": {},
+        "model": selected_model,
+    }
 
     context_block = _build_context_block(
         recent_context=recent_context,
@@ -177,6 +209,7 @@ def analyze_recording(
     )
 
     def _call_model(instruction: str) -> dict:
+        nonlocal last_meta
         user_content_parts = [
             "아래 사용자 원문을 기억 아카이브 초안 JSON으로 정리하세요.",
             f"## 사용자 원문\n{source_text}",
@@ -207,15 +240,30 @@ def analyze_recording(
             {"role": "user", "content": "\n\n".join(user_content_parts)},
         ]
 
-        response = client.chat.completions.create(
-            model=_get_model(),
+        response, request_config = chat_completion_create(
+            client,
+            model=selected_model,
             messages=messages,
             temperature=0.2,
-            max_tokens=1200,
+            max_output_tokens=1200,
             response_format={"type": "json_object"},
         )
+        usage, raw_usage = extract_usage(response)
+        last_meta = {
+            "usage": usage,
+            "raw_usage": raw_usage,
+            "request_config": request_config,
+            "model": selected_model,
+        }
 
-        raw = response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        if content is None or not str(content).strip():
+            raise ValueError(
+                "empty model response content "
+                f"(model={selected_model}, finish_reason="
+                f"{getattr(response.choices[0], 'finish_reason', None)}, usage={usage})"
+            )
+        raw = str(content).strip()
         data = json.loads(raw)
         draft = normalize_draft(data)
         draft = validate_draft(
@@ -259,6 +307,8 @@ def analyze_recording(
                     "수정 요청이 일부만 반영되었습니다: " + "; ".join(unfulfilled)
                 )
 
+    if return_meta:
+        return {"draft": draft, **last_meta}
     return draft
 
 

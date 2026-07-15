@@ -1,0 +1,59 @@
+{
+  "human_reviews_present": true,
+  "wins": {
+    "gpt-5.6-terra": 5,
+    "gpt-5.6-luna": 17,
+    "tie": 8
+  },
+  "project_accuracy_rate": 1.0,
+  "over_interpretation_rate": 0.0,
+  "answered_again_rate": 0.0,
+  "models": {
+    "gpt-4o-mini": {
+      "wins": 0,
+      "avg_fidelity": null,
+      "avg_interpretation_usefulness": null,
+      "avg_question_usefulness": null,
+      "question_generation_rate": 0.9,
+      "question_reject_rate": 0.1,
+      "error_rate": 0.0,
+      "avg_latency_ms": 19512.633,
+      "avg_input_tokens": 5410.7,
+      "avg_output_tokens": 828.333,
+      "avg_reasoning_tokens": 0,
+      "avg_cost_per_case_usd": 0.001,
+      "total_estimated_cost_usd": 0.030657
+    },
+    "gpt-5.6-luna": {
+      "wins": 17,
+      "avg_fidelity": 4.533,
+      "avg_interpretation_usefulness": 4.4,
+      "avg_question_usefulness": 3.929,
+      "question_generation_rate": 0.9,
+      "question_reject_rate": 0.1,
+      "error_rate": 0.0,
+      "avg_latency_ms": 16133.7,
+      "avg_input_tokens": 5493.9,
+      "avg_output_tokens": 1868.4,
+      "avg_reasoning_tokens": 603,
+      "avg_cost_per_case_usd": 0.015,
+      "total_estimated_cost_usd": 0.436996
+    },
+    "gpt-5.6-terra": {
+      "wins": 5,
+      "avg_fidelity": 4.433,
+      "avg_interpretation_usefulness": 4.067,
+      "avg_question_usefulness": 3.393,
+      "question_generation_rate": 0.9,
+      "question_reject_rate": 0.1,
+      "error_rate": 0.0,
+      "avg_latency_ms": 16783.8,
+      "avg_input_tokens": 5476.967,
+      "avg_output_tokens": 1532.1,
+      "avg_reasoning_tokens": 302.067,
+      "avg_cost_per_case_usd": 0.033,
+      "total_estimated_cost_usd": 0.98261
+    }
+  },
+  "note": "No automatic winner without human reviews."
+}

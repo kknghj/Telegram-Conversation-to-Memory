@@ -1,0 +1,4 @@
+model,success_count,error_count,avg_latency_ms,total_input_tokens,total_output_tokens,total_reasoning_tokens,question_generation_rate,estimated_total_cost_usd,avg_cost_per_case_usd
+gpt-4o-mini,30,0,19512.63,162321,24850,0,0.9,0.030657,0.001022
+gpt-5.6-luna,30,0,16133.7,164817,56052,18090,0.9,0.436996,0.014567
+gpt-5.6-terra,30,0,16783.8,164309,45963,9062,0.9,0.98261,0.032754

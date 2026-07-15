@@ -143,8 +143,19 @@ def _get_client() -> OpenAI:
     return OpenAI(api_key=api_key)
 
 
+def resolve_question_model(model: str | None = None) -> str:
+    """모델 선택: 함수 인자 > OPENAI_QUESTION_MODEL > OPENAI_MODEL > 기본값."""
+    if model and str(model).strip():
+        return str(model).strip()
+    return (
+        os.getenv("OPENAI_QUESTION_MODEL", "").strip()
+        or os.getenv("OPENAI_MODEL", "").strip()
+        or "gpt-4o-mini"
+    )
+
+
 def _get_model() -> str:
-    return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    return resolve_question_model()
 
 
 def can_use_meaning_check(
@@ -655,18 +666,39 @@ def generate_question(
     draft: dict,
     question_session: dict,
     recent_context: list[dict] | None = None,
+    model: str | None = None,
+    return_meta: bool = False,
 ) -> dict:
-    """후속 질문 1개 생성."""
+    """후속 질문 1개 생성.
+
+    model이 주어지면 OPENAI_MODEL을 덮어쓰지 않고 해당 요청에만 사용한다.
+    return_meta=True이면 {"question_result", "usage", "request_config", "model", "raw_usage"}를 반환한다.
+    """
+    from conversation_to_memory.evaluation.openai_compat import (
+        chat_completion_create,
+        extract_usage,
+    )
+
     if question_session.get("questions_asked", 0) >= get_max_questions():
-        return normalize_question_result(
+        skipped = normalize_question_result(
             {
                 "needs_followup": False,
                 "followup_question": "",
                 "skip_reason": "max_questions_reached",
             }
         )
+        if return_meta:
+            return {
+                "question_result": skipped,
+                "usage": {},
+                "raw_usage": None,
+                "request_config": {},
+                "model": resolve_question_model(model),
+            }
+        return skipped
 
     client = _get_client()
+    selected_model = resolve_question_model(model)
     system = _load_prompt("question_generation_prompt.txt")
     user_content = _build_question_user_content(
         user_texts=user_texts,
@@ -676,23 +708,32 @@ def generate_question(
         recent_context=recent_context,
     )
 
-    response = client.chat.completions.create(
-        model=_get_model(),
+    response, request_config = chat_completion_create(
+        client,
+        model=selected_model,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user_content},
         ],
         temperature=0.45,
-        max_tokens=800,
+        max_output_tokens=800,
         response_format={"type": "json_object"},
     )
+    usage, raw_usage = extract_usage(response)
 
-    raw = response.choices[0].message.content.strip()
+    content = response.choices[0].message.content
+    if content is None or not str(content).strip():
+        raise ValueError(
+            "empty model response content "
+            f"(model={selected_model}, finish_reason="
+            f"{getattr(response.choices[0], 'finish_reason', None)}, usage={usage})"
+        )
+    raw = str(content).strip()
     data = json.loads(raw)
     latest_user = ""
     if user_texts:
         latest_user = user_texts[-1]
-    return validate_question(
+    result = validate_question(
         data,
         draft=draft,
         question_session=question_session,
@@ -700,6 +741,15 @@ def generate_question(
         user_texts=user_texts,
         conversation=conversation,
     )
+    if return_meta:
+        return {
+            "question_result": result,
+            "usage": usage,
+            "raw_usage": raw_usage,
+            "request_config": request_config,
+            "model": selected_model,
+        }
+    return result
 
 
 def merge_question_into_draft(draft: dict, question_result: dict) -> dict:

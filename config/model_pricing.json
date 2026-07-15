@@ -1,0 +1,26 @@
+{
+  "verified_at": "2026-07-15",
+  "source": "https://developers.openai.com/api/docs/models (gpt-4o-mini, gpt-5.6-luna, gpt-5.6-terra pages)",
+  "currency": "USD",
+  "unit": "per_1M_tokens",
+  "models": {
+    "gpt-4o-mini": {
+      "input_per_million": 0.15,
+      "cached_input_per_million": 0.075,
+      "output_per_million": 0.60,
+      "notes": "Official model page pricing as of verification date."
+    },
+    "gpt-5.6-luna": {
+      "input_per_million": 1.00,
+      "cached_input_per_million": 0.10,
+      "output_per_million": 6.00,
+      "notes": "Official model page pricing as of verification date."
+    },
+    "gpt-5.6-terra": {
+      "input_per_million": 2.50,
+      "cached_input_per_million": 0.25,
+      "output_per_million": 15.00,
+      "notes": "Official model page pricing as of verification date."
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "models": {
+    "gpt-4o-mini": {
+      "success_count": 30,
+      "error_count": 0,
+      "avg_latency_ms": 19512.63,
+      "total_input_tokens": 162321,
+      "total_output_tokens": 24850,
+      "total_reasoning_tokens": 0,
+      "avg_input_tokens": 5410.7,
+      "avg_output_tokens": 828.33,
+      "avg_reasoning_tokens": 0.0,
+      "question_generation_rate": 0.9,
+      "question_reject_rate": 0.1,
+      "estimated_total_cost_usd": 0.030657,
+      "avg_cost_per_case_usd": 0.001022,
+      "error_categories": {}
+    },
+    "gpt-5.6-luna": {
+      "success_count": 30,
+      "error_count": 0,
+      "avg_latency_ms": 16133.7,
+      "total_input_tokens": 164817,
+      "total_output_tokens": 56052,
+      "total_reasoning_tokens": 18090,
+      "avg_input_tokens": 5493.9,
+      "avg_output_tokens": 1868.4,
+      "avg_reasoning_tokens": 603.0,
+      "question_generation_rate": 0.9,
+      "question_reject_rate": 0.1,
+      "estimated_total_cost_usd": 0.436996,
+      "avg_cost_per_case_usd": 0.014567,
+      "error_categories": {}
+    },
+    "gpt-5.6-terra": {
+      "success_count": 30,
+      "error_count": 0,
+      "avg_latency_ms": 16783.8,
+      "total_input_tokens": 164309,
+      "total_output_tokens": 45963,
+      "total_reasoning_tokens": 9062,
+      "avg_input_tokens": 5476.97,
+      "avg_output_tokens": 1532.1,
+      "avg_reasoning_tokens": 302.07,
+      "question_generation_rate": 0.9,
+      "question_reject_rate": 0.1,
+      "estimated_total_cost_usd": 0.98261,
+      "avg_cost_per_case_usd": 0.032754,
+      "error_categories": {}
+    }
+  },
+  "total_results": 90,
+  "note": "Human review required before declaring a winner."
+}

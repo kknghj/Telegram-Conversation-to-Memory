@@ -1,0 +1,537 @@
+{
+  "audited_at": "2026-07-15",
+  "git_commit_note": "recorded at cleanup time in prompt_change_summary.md",
+  "canonical_sources": {
+    "question": "docs/question_strategy.md",
+    "interpretation": "docs/MEMORY_ARCHIVE_PRINCIPLES.md",
+    "extraction_prompt_policy": "docs/PROMPT_POLICY.md",
+    "user_taste": "docs/user_conversation_profile.md",
+    "runtime_memory_prompt": "conversation_to_memory/prompts/memory_archive_system_prompt.txt",
+    "runtime_question_prompt": "conversation_to_memory/prompts/question_generation_prompt.txt",
+    "fidelity_enforcement": "conversation_to_memory/memory/fidelity.py",
+    "question_enforcement": "conversation_to_memory/memory/question.py + question_quality.py"
+  },
+  "priority_order": [
+    "원문 충실도와 안전 hard rule",
+    "사용자 중단·피로·거부 신호",
+    "이미 답한 질문 및 중복 질문 차단",
+    "질문 후보의 근거성과 중요도",
+    "질문 유형 선택",
+    "표현 스타일과 다양성"
+  ],
+  "rules": [
+    {
+      "rule_id": "I-001",
+      "category": "interpretation",
+      "summary": "사용자가 말하지 않은 긍정 의미·성장 서사·교훈·자기칭찬을 만들지 않는다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "핵심 원칙", "status": "runtime_prompt"},
+        {"path": "docs/PROMPT_POLICY.md", "location": "금지 사항", "status": "canonical_doc"},
+        {"path": "docs/MEMORY_ARCHIVE_PRINCIPLES.md", "location": "§1", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/fidelity.py", "location": "detect_unsupported_inferences", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "제품 불변 원칙. 프롬프트 + fidelity 후처리."
+    },
+    {
+      "rule_id": "I-002",
+      "category": "interpretation",
+      "summary": "감정은 원문 근거가 있을 때만 추출하고, 불확실한 해석은 가능성으로만 표시한다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "핵심 원칙 / 필드 의미", "status": "runtime_prompt"},
+        {"path": "docs/MEMORY_ARCHIVE_PRINCIPLES.md", "location": "§2-3", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/fidelity.py", "location": "validate_draft", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "Archivist 신뢰 기질."
+    },
+    {
+      "rule_id": "I-003",
+      "category": "interpretation",
+      "summary": "방해하지 않음을 도움·지지로 해석하지 않으며, 역할 언급을 새 주제로 일반화하지 않는다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "Grounded Interpretation Rules", "status": "runtime_prompt"},
+        {"path": "conversation_to_memory/memory/fidelity.py", "location": "_detect_positive_reframing / _detect_role_generalization", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "실패 데이터셋으로 검증된 grounded interpretation."
+    },
+    {
+      "rule_id": "I-004",
+      "category": "interpretation",
+      "summary": "memory_candidate(사실)와 model_interpretation(에이전트 해석)을 분리한다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "memory_candidate와 model_interpretation 분리", "status": "runtime_prompt"},
+        {"path": "docs/user_conversation_profile.md", "location": "§4.4", "status": "canonical_doc"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": false,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "스키마/정책. 필드 존재는 테스트되나 분리 전용 단위 테스트는 약함."
+    },
+    {
+      "rule_id": "I-005",
+      "category": "interpretation",
+      "summary": "가치관이 사건보다 중요하면 event_summary 중심에 두고 memory_type=reflection_seed를 선호한다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "가치관 우선 원칙", "status": "runtime_prompt"},
+        {"path": "conversation_to_memory/memory/fidelity.py", "location": "apply_reflection_value_heuristics", "status": "runtime_code"},
+        {"path": "conversation_to_memory/failure_recorder.py", "location": "value_hidden_by_event / Rule 6", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": ["S-006"],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "Phase 2 회고 씨앗과 일치. S-006과 동일 의미이므로 문서에서는 I-005로 통일."
+    },
+    {
+      "rule_id": "I-006",
+      "category": "interpretation",
+      "summary": "temporal_status는 사용자 원문 시제를 따른다. 미완료 사건을 past로 쓰지 않는다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "시제 분류", "status": "runtime_prompt"},
+        {"path": "conversation_to_memory/memory/fidelity.py", "location": "infer_temporal_status", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "회귀 테스트 존재."
+    },
+    {
+      "rule_id": "F-001",
+      "category": "fidelity",
+      "summary": "후처리로 unsupported_inferences·interpretation_risk·성장 서사 억제를 강제한다.",
+      "sources": [
+        {"path": "docs/PROMPT_POLICY.md", "location": "후처리", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/fidelity.py", "location": "validate_draft", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "코드가 집행 권한."
+    },
+    {
+      "rule_id": "F-002",
+      "category": "fidelity",
+      "summary": "수정 요청은 체크리스트로 검증하고 미반영이면 재호출한다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "수정 요청 검증", "status": "runtime_prompt"},
+        {"path": "conversation_to_memory/memory/service.py", "location": "analyze_recording edit loop", "status": "runtime_code"},
+        {"path": "conversation_to_memory/failure_recorder.py", "location": "correction_partial → Rule 7", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": ["F-002-NUM"],
+      "decision": "rewrite",
+      "reason": "프롬프트의 'Rule 1' 라벨을 EditChecklist로 바꿔 failure Rule 1과 충돌을 제거."
+    },
+    {
+      "rule_id": "F-002-NUM",
+      "category": "fidelity",
+      "summary": "Rule N 번호가 프롬프트·failure_recorder·question_strategy에서 서로 다른 의미를 가리킨다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "Rule 1 / Rule 4", "status": "runtime_prompt"},
+        {"path": "conversation_to_memory/failure_recorder.py", "location": "RULE_BY_FAILURE_TYPE", "status": "runtime_code"},
+        {"path": "docs/question_strategy.md", "location": "§8", "status": "canonical_doc"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": false,
+      "duplicate_of": [],
+      "conflicts_with": ["F-002", "S-001", "S-004"],
+      "decision": "merge",
+      "reason": "런타임 프롬프트는 이름 기반 라벨로, failure taxonomy는 Rule 1–7로 유지."
+    },
+    {
+      "rule_id": "E-001",
+      "category": "entity",
+      "summary": "people=사람, tools=도구, events=행사, projects=지속 작업물로 역할 분리한다.",
+      "sources": [
+        {"path": "docs/question_strategy.md", "location": "§7", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/fidelity.py", "location": "reclassify_entities", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "2026-07-12 수정. 코드 강제."
+    },
+    {
+      "rule_id": "E-002",
+      "category": "entity",
+      "summary": "value_tags는 원문 근거만. '시간 낭비'는 제품/절차 vs 자기관리를 구분한다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "가치관 태그", "status": "runtime_prompt"},
+        {"path": "conversation_to_memory/memory/fidelity.py", "location": "is_user_time_saving_value", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "코드 heuristic이 권한."
+    },
+    {
+      "rule_id": "Q-001",
+      "category": "question",
+      "summary": "accurate_summary != no_question_needed. archive_gap과 reflective_handle은 독립 축.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/question_generation_prompt.txt", "location": "핵심 원칙", "status": "runtime_prompt"},
+        {"path": "docs/question_strategy.md", "location": "§1-2", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/question_quality.py", "location": "decide_question_policy", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": ["Q-010"],
+      "decision": "keep",
+      "reason": "Phase 2 현행 기준."
+    },
+    {
+      "rule_id": "Q-002",
+      "category": "question",
+      "summary": "후보 1–3개를 만든 뒤 검증한다. information_already_complete로 전체를 뭉개지 않는다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/question_generation_prompt.txt", "location": "후보 생성 / skip_reason", "status": "runtime_prompt"},
+        {"path": "docs/question_strategy.md", "location": "§4", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/question.py", "location": "validate_question", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "구현·테스트 완료."
+    },
+    {
+      "rule_id": "Q-003",
+      "category": "question",
+      "summary": "meaning_check는 archive_gap=major 또는 risk≥medium일 때만, 세션당 최대 1회.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/question_generation_prompt.txt", "location": "핵심 원칙", "status": "runtime_prompt"},
+        {"path": "docs/question_strategy.md", "location": "§3.1", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/question.py", "location": "can_use_meaning_check", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": ["Q-012"],
+      "decision": "keep",
+      "reason": "코드가 권한. archive 프롬프트의 중복 meaning_check 지침은 제거."
+    },
+    {
+      "rule_id": "Q-004",
+      "category": "question",
+      "summary": "handle=strong이면 association/contrast/value_probe 등 확장 질문을 허용한다.",
+      "sources": [
+        {"path": "docs/question_strategy.md", "location": "§2-3", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/question_quality.py", "location": "decide_question_policy", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": ["Q-010"],
+      "decision": "keep",
+      "reason": "정확도 확인만 허용하던 구 정책과 충돌. question_strategy가 우선."
+    },
+    {
+      "rule_id": "Q-005",
+      "category": "question",
+      "summary": "answered_already, low_salience_anchor, category_mismatch, redundant_question, low_expected_gain 거절.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/question_generation_prompt.txt", "location": "금지/거절", "status": "runtime_prompt"},
+        {"path": "conversation_to_memory/memory/question_quality.py", "location": "validate_question_candidate", "status": "runtime_code"},
+        {"path": "docs/archive/incidents/question_quality_and_feedback_contamination_2026-07-12.md", "location": "§4", "status": "archived"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "2026-07-12 incident 수정. 높은 우선순위."
+    },
+    {
+      "rule_id": "Q-006",
+      "category": "question",
+      "summary": "한 번에 보내는 질문은 1개. 세션 상한은 최대 2회. 두 번째는 게이트 통과 시에만.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/question_generation_prompt.txt", "location": "핵심 원칙 L9", "status": "runtime_prompt"},
+        {"path": "docs/question_strategy.md", "location": "§5", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/question.py", "location": "get_max_questions", "status": "runtime_code"},
+        {"path": "conversation_to_memory/memory/question_quality.py", "location": "evaluate_second_question_gate", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": ["Q-011", "Q-013"],
+      "decision": "keep",
+      "reason": "현행 운영 규칙. 문서의 max 1과 구분해야 함."
+    },
+    {
+      "rule_id": "Q-007",
+      "category": "question",
+      "summary": "후속 응답을 분류하고 followup_answer만 기억 원문에 포함한다.",
+      "sources": [
+        {"path": "docs/question_strategy.md", "location": "§6", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/bot/chat_service.py", "location": "classify_followup_response", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "Python flow 소유. 프롬프트에 넣지 않음."
+    },
+    {
+      "rule_id": "Q-008",
+      "category": "question",
+      "summary": "직전 질문과 같은 question_mode를 피한다.",
+      "sources": [
+        {"path": "docs/user_conversation_profile.md", "location": "§5.3", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/question.py", "location": "validate_question mode rotate", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": false,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "가벼운 다양성 규칙. 낮은 우선순위."
+    },
+    {
+      "rule_id": "Q-009",
+      "category": "question",
+      "summary": "LLM이 skip해도 expansion handle이 있으면 grounded expansion fallback.",
+      "sources": [
+        {"path": "conversation_to_memory/memory/question.py", "location": "build_grounded_expansion_question", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "Python 복구 경로. 프롬프트에 장황히 쓰지 않음."
+    },
+    {
+      "rule_id": "Q-010",
+      "category": "question",
+      "summary": "STALE: 후속 질문은 정확도 확인용만 허용 (구 Archivist 정책).",
+      "sources": [
+        {"path": "docs/PROMPT_POLICY.md", "location": "허용 사항 / 후속 질문", "status": "canonical_doc"},
+        {"path": "docs/MEMORY_ARCHIVE_PRINCIPLES.md", "location": "§4", "status": "canonical_doc"}
+      ],
+      "implemented_in_code": false,
+      "covered_by_test": false,
+      "duplicate_of": [],
+      "conflicts_with": ["Q-001", "Q-004", "Q-006"],
+      "decision": "archive",
+      "reason": "reflection agent 경로에서는 question_strategy가 대체. 문서에 supersession 배너 추가."
+    },
+    {
+      "rule_id": "Q-011",
+      "category": "question",
+      "summary": "STALE: 기록당 후속 질문 최대 0~1개.",
+      "sources": [
+        {"path": "docs/MEMORY_ARCHIVE_PRINCIPLES.md", "location": "§4", "status": "canonical_doc"},
+        {"path": "docs/PROMPT_POLICY.md", "location": "후속 질문", "status": "canonical_doc"},
+        {"path": "conversation_to_memory/memory/service.py", "location": "_build_context_block followup_already_asked", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": false,
+      "duplicate_of": [],
+      "conflicts_with": ["Q-006"],
+      "decision": "remove",
+      "reason": "레거시 경로(REFLECTION_AGENT_ENABLED=false)에만 남기고 현행 문서/프롬프트에서는 제거."
+    },
+    {
+      "rule_id": "Q-012",
+      "category": "question",
+      "summary": "DUPLICATE: archive 프롬프트가 meaning_check를 followup_question으로 지시.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "저장 의도 확인", "status": "runtime_prompt"}
+      ],
+      "implemented_in_code": false,
+      "covered_by_test": false,
+      "duplicate_of": ["Q-003"],
+      "conflicts_with": ["FL-001"],
+      "decision": "remove",
+      "reason": "reflection agent가 질문을 소유할 때 archive 모델은 질문하지 않음."
+    },
+    {
+      "rule_id": "Q-013",
+      "category": "question",
+      "summary": "user_conversation_profile의 회고형 MVP 2–4회는 운영 상한(2)과 어긋난다.",
+      "sources": [
+        {"path": "docs/user_conversation_profile.md", "location": "§5.2", "status": "canonical_doc"}
+      ],
+      "implemented_in_code": false,
+      "covered_by_test": false,
+      "duplicate_of": [],
+      "conflicts_with": ["Q-006"],
+      "decision": "rewrite",
+      "reason": "현재 운영 max=2+gate로 명시. 2–4는 장기 희망으로 라벨."
+    },
+    {
+      "rule_id": "S-001",
+      "category": "safety",
+      "summary": "기억 불가 신호 후 추가 질문을 하지 않는다 (failure Rule 1).",
+      "sources": [
+        {"path": "conversation_to_memory/failure_recorder.py", "location": "MEMORY_UNAVAILABLE_SIGNALS", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "안전 taxonomy. 프롬프트 EditChecklist와 번호 분리."
+    },
+    {
+      "rule_id": "S-002",
+      "category": "safety",
+      "summary": "한국어 조건절을 사람 관계로 오해하지 않는다 (failure Rule 2).",
+      "sources": [
+        {"path": "conversation_to_memory/failure_recorder.py", "location": "CONDITIONAL_PATTERN", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "탐지/기록. 예방은 모델 의존."
+    },
+    {
+      "rule_id": "S-003",
+      "category": "safety",
+      "summary": "사용자 정정이 최우선이다 (failure Rule 3).",
+      "sources": [
+        {"path": "conversation_to_memory/failure_recorder.py", "location": "correction_ignored", "status": "runtime_code"},
+        {"path": "conversation_to_memory/bot/failure_hooks.py", "location": "maybe_prepare_correction_failure", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "사용자 보호."
+    },
+    {
+      "rule_id": "S-004",
+      "category": "safety",
+      "summary": "failure Rule 4는 중복/저중요도/카테고리불일치/메타피드백 등 여러 유형의 umbrella.",
+      "sources": [
+        {"path": "conversation_to_memory/failure_recorder.py", "location": "RULE_BY_FAILURE_TYPE", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "의도적으로 umbrella 유지. 세부 유형은 failure_type 필드로 구분."
+    },
+    {
+      "rule_id": "S-005",
+      "category": "safety",
+      "summary": "부정 감정 직후 긍정 회상 질문을 금지하고, 요약+부정 맥락에서는 질문을 생략한다.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/question_generation_prompt.txt", "location": "Rule 5", "status": "runtime_prompt"},
+        {"path": "conversation_to_memory/memory/question.py", "location": "should_skip_followup_after_summary / positive_reframe_risk", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "강한 코드+테스트. 전역 질문 억제로 확대하지 않음."
+    },
+    {
+      "rule_id": "S-006",
+      "category": "safety",
+      "summary": "가치관이 사건 나열에 가려지면 실패로 기록 (failure Rule 6).",
+      "sources": [
+        {"path": "conversation_to_memory/failure_recorder.py", "location": "value_hidden_by_event", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": ["I-005"],
+      "conflicts_with": [],
+      "decision": "merge",
+      "reason": "I-005와 동일. failure taxonomy ID만 유지."
+    },
+    {
+      "rule_id": "S-007",
+      "category": "safety",
+      "summary": "부분 수정 반영은 실패 (failure Rule 7 / correction_partial).",
+      "sources": [
+        {"path": "conversation_to_memory/failure_recorder.py", "location": "correction_partial", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": ["F-002"],
+      "conflicts_with": [],
+      "decision": "merge",
+      "reason": "F-002와 동일 계열. question_strategy §8에 Rule 7 언급 보완."
+    },
+    {
+      "rule_id": "S-008",
+      "category": "safety",
+      "summary": "코칭 문구·복수 물음표·피로/중단 키워드로 질문을 차단한다.",
+      "sources": [
+        {"path": "conversation_to_memory/memory/question.py", "location": "FORBIDDEN_QUESTION_PHRASES / has_fatigue_signal", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "Python gate."
+    },
+    {
+      "rule_id": "FL-001",
+      "category": "flow",
+      "summary": "REFLECTION_AGENT_ENABLED=true이면 초안은 질문을 내지 않고 question.py가 질문을 생성한다.",
+      "sources": [
+        {"path": "conversation_to_memory/memory/service.py", "location": "normalize_draft / analyze_recording constraint", "status": "runtime_code"},
+        {"path": "conversation_to_memory/bot/question_flow.py", "location": "maybe_followup_or_review", "status": "runtime_code"}
+      ],
+      "implemented_in_code": true,
+      "covered_by_test": true,
+      "duplicate_of": [],
+      "conflicts_with": ["Q-012"],
+      "decision": "keep",
+      "reason": "올바른 역할 분리. archive 프롬프트 정리로 완성."
+    },
+    {
+      "rule_id": "FL-002",
+      "category": "flow",
+      "summary": "open_questions는 사용자 원문의 미해결 질문만. 봇 질문에 대한 반문은 제외.",
+      "sources": [
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "필드 의미 open_questions", "status": "runtime_prompt"}
+      ],
+      "implemented_in_code": false,
+      "covered_by_test": false,
+      "duplicate_of": [],
+      "conflicts_with": [],
+      "decision": "keep",
+      "reason": "프롬프트 지침. live 오염 시 코드 필터 검토."
+    }
+  ]
+}
