@@ -87,7 +87,7 @@ async def log_telegram_bot_ready(app: Application) -> None:
 def log_startup_banner() -> str:
     backend = get_storage_backend_name()
     draft_backend = get_draft_storage_backend_name()
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
+    model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna").strip() or "gpt-5.6-luna"
     logger.info("Memory Archive Bot 시작")
     logger.info("Storage Backend: %s", backend)
     logger.info("Draft Storage Backend: %s", draft_backend)

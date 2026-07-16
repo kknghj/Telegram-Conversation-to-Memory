@@ -43,7 +43,7 @@ Render Dashboard → Service → **Environment** 에서 설정:
 | `SUPABASE_SECRET_KEY` | service role / secret key | Secret, 프론트에 노출 금지 |
 | `SUPABASE_MEMORIES_TABLE` | `memories` | 선택 |
 | `SUPABASE_DRAFTS_TABLE` | `drafts` | 선택 |
-| `OPENAI_MODEL` | `gpt-4o-mini` | 선택 |
+| `OPENAI_MODEL` | `gpt-5.6-luna` | 선택 (2026-07-16 블라인드 평가 후 운영 확정) |
 | `TELEGRAM_OFFLINE_MODE` | `false` | 운영에서 dev 모드 금지 |
 
 로컬 개발용 변수(`DEV_CHAT_USER_ID`, `REFLECTION_*` 등)는 Render에 넣지 않아도 됩니다.
@@ -62,7 +62,7 @@ Logs 탭에서 아래 순서 확인:
 Memory Archive Bot 시작
 Storage Backend: supabase
 Draft Storage Backend: supabase
-OpenAI Model: gpt-4o-mini
+OpenAI Model: gpt-5.6-luna
 Supabase 연결 성공 (table=memories)
 Supabase drafts 연결 성공 (table=drafts)
 Draft cleanup: ...

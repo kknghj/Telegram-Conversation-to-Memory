@@ -2,17 +2,25 @@
 
 ## 현재 검증 상태
 
-- 기준일: 2026-07-15
+- 기준일: 2026-07-16
 - 0단계 평가 기반 정리 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
 - 1단계 기억 기질 품질 — `passed` (근거: 105개 기억 및 사용자 직접 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
-- 2단계 회고 씨앗 수집 — `conditional_pass` (근거: 질문 품질/피드백 분리 구현, fixture replay·회귀 테스트 통과, 2026-07-12. 2026-07-15: 프롬프트 규칙 감사·모델 비교 평가 도구·단위 테스트 313 passed. live 관찰·사람 모델 평가 미완)
+- 2단계 회고 씨앗 수집 — `conditional_pass` (근거: 질문 품질/피드백 분리 구현, fixture replay·회귀 테스트 통과, 2026-07-12. 2026-07-16: 30건×3모델 사람 블라인드 평가로 운영 모델 `gpt-5.6-luna` 확정. live 관찰 미완)
 - 3단계 Reporter 후보 발견 — `passed` (근거: 20개 후보 사용자 전수 검토, `data/evaluation/reporter_poc_2026-07-11.json`, 2026-07-11)
 - 4단계 Style Editor 후킹/재미 — `conditional_pass` (근거: 10개 후보 사용자 전수 검토, 관찰형·후킹형 선호 9/10, 최종 `too_much` 0/10, `taste_fit=high|medium` 9/10, `data/evaluation/style_editor_poc_2026-07-11.json`, 2026-07-11. 다음 라운드의 `HOOK_TOO_FLAT` 감소 여부는 미검증)
 - 현재 검증 단계: **2단계 회고 씨앗 수집 — `conditional_pass`**
-- 다음 검증 행동: `reports/model_comparison/` 정적 HTML에서 30건×3모델 블라인드 평가를 완료하고, 병행으로 live 신규 기억의 중복 질문·메타 피드백·엔티티 오분류를 관찰한다.
-- 진입 제한: 질문률을 코드로 강제하지 않으며, `question_outcome` trace로 생성/거절 사유만 관측한다. 모델 비교는 평가 전용이며 production drafts/memory에 쓰지 않는다.
+- 다음 검증 행동: 운영을 `gpt-5.6-luna`로 전환한 뒤 live 신규 기억의 중복 질문·메타 피드백·엔티티 오분류를 관찰한다.
+- 진입 제한: 질문률을 코드로 강제하지 않으며, `question_outcome` trace로 생성/거절 사유만 관측한다. 모델 비교 runner는 평가 전용이며 production drafts/memory에 쓰지 않는다.
 
 이 블록은 검증 진도의 단일 요약이다. 새 증거가 생기면 상태, 근거, 날짜, 다음 검증 행동을 함께 갱신하며 다음 검증 행동은 항상 하나만 유지한다.
+
+### 2026-07-16 운영 모델 확정: gpt-5.6-luna
+
+- 목적: 요약·태깅·첫 후속 질문 품질을 동일 규칙으로 비교해 Archivist/질문 경로 운영 모델 결정
+- 근거: `run_20260715_seed` 사람 평가 30건 — luna wins 17 / terra 5 / mini 0 / tie 8; fidelity·interpretation·question 평균 모두 luna 1위; over_interpretation 0
+- 비용: luna ≈ $0.015/case (mini $0.001, terra $0.033) — 품질 대비 수용
+- 판정: 운영 모델 결정 `passed` (incident: `docs/archive/incidents/model_selection_gpt56_luna_2026-07-16.md`). Phase 2 전체는 live 관찰 전까지 `conditional_pass` 유지
+- 저장소 조치: `OPENAI_MODEL` 기본값·`render.yaml`·문서 기본값을 `gpt-5.6-luna`로 전환. Render Dashboard env는 배포 시 수동 확인 필요
 
 ### 2026-07-15 프롬프트 감사·모델 비교 평가 도구
 
@@ -22,7 +30,7 @@
 - 모델 접근: 세 모델 모두 probe `ok=True` (동일 `OPENAI_API_KEY`)
 - 실행: `reports/model_comparison/run_20260715_seed` — 90/90 성공 (초안+첫 질문). GPT-5 계열 초기 빈 응답은 `max_completion_tokens` 확대 후 재실행으로 해소
 - 자동 검증: `pytest -q` 313 passed, 1 skipped (`model_comparison_live`)
-- 판정: 도구·규칙 정리·배치 실행은 완료. 사람 블라인드 평가·운영 모델 결정은 미완 → 2단계 전체는 계속 `conditional_pass`
+- 판정: 도구·규칙 정리·배치 실행은 완료. 사람 블라인드 평가·운영 모델 결정은 2026-07-16에 완료(위 항목)
 - 문서: `docs/model_comparison_experiment.md`
 - 비교 화면: `reports/model_comparison/run_20260715_seed/comparison.html`
 

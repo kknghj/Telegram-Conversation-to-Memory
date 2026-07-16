@@ -19,7 +19,7 @@ services:
       - key: DRAFT_STORAGE_BACKEND
         value: supabase
       - key: OPENAI_MODEL
-        value: gpt-4o-mini
+        value: gpt-5.6-luna
       - key: TELEGRAM_OFFLINE_MODE
         value: "false"
       - key: REFLECTION_AGENT_ENABLED

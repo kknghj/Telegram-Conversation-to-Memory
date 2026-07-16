@@ -129,7 +129,7 @@ conversation_to_memory/
 | 역할 | 개인 기억 아카이브 정리자 |
 | 입력 | 사용자 원문, 대화, 최근 맥락, 취소 맥락, 수정 요청 |
 | 출력 | 단일 구조화 JSON |
-| 모델 | `OPENAI_MODEL`, 기본 `gpt-4o-mini` |
+| 모델 | `OPENAI_MODEL`, 기본 `gpt-5.6-luna` (2026-07-16 블라인드 평가로 확정; 근거 `docs/archive/incidents/model_selection_gpt56_luna_2026-07-16.md`) |
 | temperature | `0.2` |
 | 후속 질문 | 정확도 확인 목적, 최대 1개 |
 

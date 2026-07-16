@@ -63,7 +63,7 @@ def build_trace(
         memory_id=memory_id,
         environment=get_trace_environment(),
         prompt_version=os.getenv("PROMPT_VERSION") or None,
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        model=os.getenv("OPENAI_MODEL", "gpt-5.6-luna"),
         question_trace=question_trace,
         project_trace=project_trace,
         tag_trace=tag_trace,

@@ -55,5 +55,5 @@
       "total_estimated_cost_usd": 0.98261
     }
   },
-  "note": "No automatic winner without human reviews."
+  "note": "Human review complete. Operating model winner: gpt-5.6-luna (17 wins). See docs/archive/incidents/model_selection_gpt56_luna_2026-07-16.md."
 }

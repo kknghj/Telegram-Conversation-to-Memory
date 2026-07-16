@@ -2,7 +2,7 @@
 
 평가 전용 실험이다. Supabase `drafts`는 읽기만 하고, production memory·Telegram·active draft는 변경하지 않는다.
 
-운영 봇의 `OPENAI_MODEL`은 바꾸지 않는다. 비교 runner는 `--models`로 받은 모델 ID를 함수 인자로 각 API 요청에 전달한다.
+운영 기본 모델은 2026-07-16 사람 블라인드 평가 이후 `gpt-5.6-luna`다 (근거: `docs/archive/incidents/model_selection_gpt56_luna_2026-07-16.md`). 비교 runner는 여전히 `OPENAI_MODEL`을 바꾸지 않고, `--models`로 받은 모델 ID를 함수 인자로 각 API 요청에 전달한다.
 
 ## Canonical rules for this experiment
 

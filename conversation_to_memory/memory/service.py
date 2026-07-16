@@ -73,7 +73,7 @@ def resolve_memory_model(model: str | None = None) -> str:
     return (
         os.getenv("OPENAI_MEMORY_MODEL", "").strip()
         or os.getenv("OPENAI_MODEL", "").strip()
-        or "gpt-4o-mini"
+        or "gpt-5.6-luna"
     )
 
 
