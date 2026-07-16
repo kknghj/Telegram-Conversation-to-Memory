@@ -1,0 +1,629 @@
+{
+  "window": "2026-07-09 <= created_at < 2026-07-16 07:30 (pre-luna)",
+  "n_memories": 22,
+  "with_assistant_questions": 17,
+  "without_assistant_questions": 5,
+  "seed_cand_total": 7,
+  "open_questions_nonempty": 0,
+  "reflection_seed_text_nonempty": 0,
+  "key_phrases_all": 22,
+  "enriched_among_question": 16,
+  "pass_among_question": 3,
+  "complaint_among_question": 1,
+  "coaching_question_sessions": 6,
+  "meaning_check_sessions": 2,
+  "pre_fix_question_sessions": 5,
+  "post_fix_question_sessions": 12,
+  "enriched_rate": 0.941,
+  "fatigue_or_reject_rate": 0.235,
+  "question_sessions": [
+    {
+      "id": "647ae72d-24e8-4719-920b-01e34fa834bf",
+      "created": "2026-07-10 05:11:41",
+      "summary": "사용자는 초혜언니의 권유로 오늘 러닝을 하겠다고 말했지만, 그 말을 지킬 수 있을지 확신이 없다고 했다. 직장에서의 상황이 우울해지기 쉬운 가운데, 초혜언니가 자",
+      "seed_cand": false,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "직장에서의 상황이 우울하다는 말씀을 하셨는데, 그런 기분이 드는 순간에 어떤 생각이나 장면이 떠오르나요?",
+          "replies": [
+            "먼저 승진하거나 승진예정인 동기들 얼굴 보기 쪽팔리고, 다들 날 한심하게 볼 것 같아"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "직장에서의 우울한 기분과 초혜언니의 격려가 서로 어떻게 다른 영향을 미치고 있는 것 같나요?",
+          "replies": [
+            "직장에서 유일하게 마음껏 웃을 수 있는 사람이 초혜언니 뿐이야. 퇴근 시간전에도 재미와 웃음을 받을 수 있어"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [
+        "초혜언니"
+      ],
+      "tools": null,
+      "kp_n": 3,
+      "risk": "medium"
+    },
+    {
+      "id": "7784d0a9-8ca9-4c4e-8f49-5af6acaeb573",
+      "created": "2026-07-10 07:41:11",
+      "summary": "사용자는 15년에서 23년 사이에 활동한 네이버 블로그를 오랜만에 방문했다. 네이버 아이디 '하사장'은 리얼리티 게임 프로그램 '더지니어스'에서 팬이 된 개그맨에",
+      "seed_cand": false,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "그 당시의 덕질과 관련된 다른 기억이나 에피소드가 떠오르나요?",
+          "replies": [
+            "하사장과 관련되서는 그 개그맨을 보러 홍대입구에 간적이 있었어. 내 비밀번호의 원조인 인생최애는 만화 최신화에서 죽은 것을 보고 울었던 적이 있었어. 그 만화를 끊었다가 3년 후에 그 캐릭터가 다시 살아난 걸 알고 "
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "그 개그맨을 보러 간 홍대입구에서의 경험은 어떤 기억으로 남아있나요?",
+          "replies": [
+            "생각보다 난 유명인의 사인에는 흥분이 나지 않더라고. 그 사인 종이는 대충 보관하다가 버렸는데 그 사람을 보는 것에 두근거리는 설레감은 지금도 기억하고 있어."
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [
+        "하사장",
+        "개그맨"
+      ],
+      "tools": null,
+      "kp_n": 5,
+      "risk": "low"
+    },
+    {
+      "id": "fdbfa1e7-a49b-43d7-bd9d-648055053d9d",
+      "created": "2026-07-10 12:20:50",
+      "summary": "사용자는 두세 달 만에 러닝을 했다. 초혜언니의 권유로 점심에 풀바셋 우유 아이스크림을 뇌물로 받고 한강을 달렸고, 날씨는 후덥지근하고 습했지만 선선한 날씨 덕분",
+      "seed_cand": true,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "초혜언니의 격려와 에어컨이 켜진 방에서의 생각이 어떤 장면이나 느낌을 떠올리게 하나요?",
+          "replies": [
+            "내가 멋있다고 자랑스럽다고 말하는 초초(초혜언니)가 귀여워보이고, 더 멋있는 모습을 보여주려고 좀 더 길게, 빨리 뛰게 돼. \n그리고 퇴근하자마자 누우면 가끔 시간을 낭비한다고 생각하는데 러닝 후 지친몸으로 누우니 "
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "러닝 후 지친 몸으로 누웠을 때의 기분과 퇴근 후 누웠을 때의 기분은 어떻게 다른가요?",
+          "replies": [
+            "음.. 확실히 퇴근하자마자 누울때는 그 날에 엄청 집중해서 일을 처리한 날이 아닌 이상 마냥 마음이 편하지 않더라고. 머리속에 자책의 말이 맴돌지는 않지만 가슴 한켠에 스스로에 대한 한심함이 싹트는 것 같아. 지금같"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [
+        "초혜언니"
+      ],
+      "tools": null,
+      "kp_n": 5,
+      "risk": "low"
+    },
+    {
+      "id": "4d41dbb4-25ce-423c-9142-e2a8fc7ab7bf",
+      "created": "2026-07-11 11:29:16",
+      "summary": "사용자는 주술회전 가챠에 38만원을 썼다고 밝혔다. 이 과정에서 관심 없는 캐릭터를 중복으로 5번 뽑으며 돈을 낭비했다고 느꼈다. 돈을 버리는 동안 도스토옙스키의",
+      "seed_cand": false,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": true,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 2,
+      "detail": [
+        {
+          "q": "도스토옙스키의 일화와 관련해, 그의 이야기가 현재 상황에 어떤 식으로 연결된다고 느끼나요?",
+          "replies": [
+            "돈으로 궁해지면 뭐든 해먹을 수 있다?는 교훈을 떠올렸다. 나도 이 낭비한 돈을 복구할 생각을 하니 공모전에 참여할 수 밖에 없을 것 같다"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "도스토옙스키와 자신의 상황을 비교했을 때, 어떤 점에서 비슷하고 어떤 점에서 다르다고 느끼나요?",
+          "replies": [
+            "패스"
+          ],
+          "enriched": false,
+          "pass_reply": true
+        }
+      ],
+      "people": [
+        "도스토옙스키"
+      ],
+      "tools": null,
+      "kp_n": 5,
+      "risk": "low"
+    },
+    {
+      "id": "018fec06-6d8a-448b-9c24-63a4a62327e0",
+      "created": "2026-07-11 13:36:48",
+      "summary": "사용자는 gpt와 아이디어 회의를 통해 토스 여름 공모전에서 여름 메뉴 추천앱을 만들기로 결정했다. 이 앱은 입맛이 없어서 음식을 떠올리지 못하는 사람에게 세네 ",
+      "seed_cand": true,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": true,
+      "coaching_q": 0,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "여름 메뉴 추천앱을 개발하면서 어떤 특정한 음식이나 가게를 떠올렸나요?",
+          "replies": [
+            "가장 먼저 콩국수를 떠올렸는데 지피티가 특정 음식이 아닌 감정에 따라 음식을 추천하는 걸 제안하더라고"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "콩국수와 감정에 따라 추천하는 방식 사이에서 어떤 점이 더 매력적으로 느껴지나요?",
+          "replies": [
+            "음.... 맥락에 맞지 않은 질문이야. 둘 중 뭐가 괜찮냐고 물을 땐 두 대상이 같은 격을 가져야지. 음식과 아이디어를 두고 물어보면 안되잖아"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [],
+      "tools": null,
+      "kp_n": 6,
+      "risk": "low"
+    },
+    {
+      "id": "0dce6f28-132d-41fa-9981-5c8b3c0ff28c",
+      "created": "2026-07-12 11:05:25",
+      "summary": "사용자는 여름 메뉴 추천앱의 설명서를 대강 생성한 후, 1일차 구현을 진행했다. 앱 개발이 복잡하고 많은 생각을 요구한다는 것을 느꼈고, 첫 MVP 구현에 40분",
+      "seed_cand": false,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "앱 개발의 복잡함 중에서 어떤 부분이 특히 힘들게 느껴졌나요?",
+          "replies": [
+            "음... 머릿속으로는 이런저런 개선점이나 아이디어가 떠오르는데 그게 얼마나 중요한지, 어느 단계에서 구현해야하는지 판단이 안서는 것이랑, 실제 핸드폰으로 돌아가기 까지 생각도 못한 여러 장애와 실수가 가로막고 있었다"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "개선점이나 아이디어의 중요성을 판단할 때 어떤 기준을 가지고 있나요?",
+          "replies": [
+            "하하 그냥 ai가 우선순위를 메기라고 시키는 편이야. 그래도 나 혼자 평가하다보니 정작 가장 중요한 실행여부, 보안보다 내 눈에 보이는 걸 우선하는 것 같아."
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [],
+      "tools": [
+        "GPT",
+        "Codex"
+      ],
+      "kp_n": 2,
+      "risk": "low"
+    },
+    {
+      "id": "c9a62e04-5dec-47b6-acd8-4a30a2c74291",
+      "created": "2026-07-12 11:26:51",
+      "summary": "사용자는 여름 메뉴 추천앱에 대해 논의하며, 앱이 수많은 소개 화면에서 눈에 띄고 중간에 이탈이 적어야 하며 결과물이 납득 가능해야 한다고 생각했다. 그러나 남들",
+      "seed_cand": false,
+      "n_asst": 1,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "토스 미니앱에서 본능적으로 눈에 띄는 요소들은 어떤 것들이었나요?",
+          "replies": [
+            "난 일단 게임은 제치고, 인스타 언팔로우 한 사람 찾기, 메신저 대화로 그 사람과의 연애 온도 측정하기 이 두가지가 가장 기억에 남아. 사람들이 궁금해하는 것을 잘 긁어준다는 인상을 받았어"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [],
+      "tools": [],
+      "kp_n": 7,
+      "risk": "low"
+    },
+    {
+      "id": "6daac9ab-5f79-486b-a2e7-5e533859d63e",
+      "created": "2026-07-12 15:10:58",
+      "summary": "사용자는 오늘 개발 중 오류를 찾지 못해 스트레스를 받았고, 1인 개발자로서 기한 내에 작업이 완성될지에 대한 긴장을 느꼈다. 그는 공무원으로 계속하는 것보다 프",
+      "seed_cand": false,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 1,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "사람들이 필요할 때 당신을 찾게 만들기 위해 어떤 구체적인 계획이나 목표를 세우고 있나요?",
+          "replies": [
+            "이번 토스 공모전을 계기로 여러 공모전에 나가보려고, 그리고 수상하든 말든 완성작들은 포트폴리오로 정리할 거야. 그리고 스스로 홍보하기 위해 트위터도 같이 할까 고민중이야"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "공모전에 참여하면서 어떤 기대나 우려가 있나요?",
+          "replies": [
+            "이미 상금받고 인터뷰따고 외주를 받는 자신을 상상하면서 김칫국을 마시고 있어. 우려라 한다면 난 공무원이니까 개인사업자를 내기 어렵다는 점이네"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [],
+      "tools": [],
+      "kp_n": 5,
+      "risk": "low"
+    },
+    {
+      "id": "bea61a63-1e1d-406f-8898-d77556bc783b",
+      "created": "2026-07-12 23:44:10",
+      "summary": "사용자는 오늘이 월요일이라는 사실이 믿기지 않으며, 매주 월요일에 괴로워하고 있다고 말했다. 이번 주말에는 프로젝트에 집중이 잘 되어 아쉬움이 더 크다고 느끼고 ",
+      "seed_cand": false,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 1,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "AI 활용에 관심이 많은 사람들과 어떤 대화를 나누고 싶나요?",
+          "replies": [
+            "서로 요새 만들고 있는 것에 대해서나, 아이디어를 듣고 싶어. 아이디어에만 머물고 있는데 같이 하면 실제 가능성이 있을 수도 있잖아"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "어떤 방법으로 그 아이디어를 실현해볼 수 있을까요?",
+          "replies": [
+            "아이디어라면 사람들과 대화를 나누는 걸 말하는 건가? 글쎄. 사실 갑자기 말 거는 건 좀 당황스러울 것 같고. ai 실습 교육에서 친해지거나 내가 아예 멤버 모집하는 방법이 있겠지? 그럴려면 내가 실력이 있다는 걸 "
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [],
+      "tools": [],
+      "kp_n": 6,
+      "risk": "low"
+    },
+    {
+      "id": "3f891542-4ad8-40a5-9e22-2a4c32f0756e",
+      "created": "2026-07-13 01:55:36",
+      "summary": "사용자는 재은 주임에게 들은 소식으로, 팀장이 나가고 강윤애라는 사람이 새로 들어올 가능성이 높다는 이야기를 전했다. 강윤애는 부하직원을 괴롭혀서 휴직이나 면직을",
+      "seed_cand": false,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 1,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "강윤애와 함께 일하게 된다면, 그 상황에 대비하기 위해 어떤 준비를 하고 싶으신가요?",
+          "replies": [
+            "대비를 어떻게 할 수 있을까. 정신과 약을 증량해야할까...\n뭔가 이 사람은 만만한 사람을 더 괴롭힐 것 같아."
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "정신과 약 외에 어떤 방법으로 자신을 보호하거나 대비할 수 있을지 생각해 보신 적이 있나요?",
+          "replies": [
+            "회사에 크게 마음을 안쓰는 방법 말고는 떠오르는 게 없어."
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [
+        "재은주임",
+        "강윤애"
+      ],
+      "tools": [],
+      "kp_n": 4,
+      "risk": "low"
+    },
+    {
+      "id": "7cc9c23d-ae17-4fba-b9a6-d4a152354a22",
+      "created": "2026-07-13 05:09:44",
+      "summary": "사용자는 '사무실 있기 싫어병'을 다시 느끼고 있으며, 사무실에 있을 때 눈치가 보일 때가 있다고 언급했다. 특히 팀장이 있는 날에 그 감정이 심해지며, 그 사람",
+      "seed_cand": true,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 2,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "기죽지 않고 지내기 위해 어떤 방법이나 태도를 고려해본 적이 있나요?",
+          "replies": [
+            "할일 없다고 딴짓하고나 할 일을 미루면 그 마음이 더 강해지는 것 같아. 사무실 있는 건 싫어도 내 할일은 제대로 해야한다는 뜻이지"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "앞으로 사무실에서 할 일을 제대로 하기 위해 어떤 전략을 세우고 싶으신가요?",
+          "replies": [
+            "음... 솔직히 마음한구석으론 일을 제대로 하고 싶지 않아서 그런 전략이나 결심을 세우는 걸 미루게 돼......"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [
+        "팀장"
+      ],
+      "tools": [],
+      "kp_n": 7,
+      "risk": "low"
+    },
+    {
+      "id": "9e6d4f15-b9c9-407b-8c8d-36bae2953ea8",
+      "created": "2026-07-13 12:23:01",
+      "summary": "사용자는 초초가 함께 맛있는 음식을 먹으러 가는 것에 대한 메신저를 받고 기분이 좋아졌으며, 사무실에서의 우울함이 조금 가셨다고 전했다. 저녁에 구식에 다녀온 후",
+      "seed_cand": false,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 1,
+      "detail": [
+        {
+          "q": "언니와의 대화에서 느끼는 감정이나 생각은 어떤 것들이 더 있을까요?",
+          "replies": [
+            "언니는 뭐랄까 언니보다 친구처럼 느껴져. 정신연령이 나랑 비슷하게 느껴진다랄까. 초초보다는 나이가 적은 다른 주임님도 나보다 성숙하다고 생각될 때가 많은데 초초는.... 친구같다."
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "언니와 친구 같은 관계가 당신에게 어떤 의미가 있나요?",
+          "replies": [
+            "표면 나이가 어떻든 돈벌려고 다니는 회사에서 마음이 잘 통하는 사람을 만나는 건 기적이고 행운이다. 귀한 인연이니까 오래 유지되었으면 좋겠다."
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [
+        "초초",
+        "언니"
+      ],
+      "tools": [],
+      "kp_n": 3,
+      "risk": "low"
+    },
+    {
+      "id": "0eedaf04-f50f-43e3-b595-827cf059f2a3",
+      "created": "2026-07-13 23:41:59",
+      "summary": "사용자는 오늘 회사에 가고 싶지 않았고, 출근 중 지하철에서 반대 방향으로 갈아타고 싶다는 생각을 했다. 돈 걱정 없이 스트레스 받지 않고 하고 싶은 것들을 하며",
+      "seed_cand": true,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": true,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "당신이 하고 싶은 것들은 어떤 것들이 있나요?",
+          "replies": [
+            "수익에 신경쓰지 않고 맘놓고 바이브코딩하고 싶고, 아침 일찍 하루를 시작해서 러닝을 하고 책을 읽으며 오전을 보내고 싶어. 봉사활동이나 취미모임으로 적당히 사람들과 어울리며 소소하지만 자유로운 일상생활을 하고 싶어."
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "그런 자유로운 일상에서 가장 하고 싶은 활동은 무엇인가요?",
+          "replies": [
+            "패스"
+          ],
+          "enriched": false,
+          "pass_reply": true
+        }
+      ],
+      "people": [],
+      "tools": [],
+      "kp_n": 6,
+      "risk": "low"
+    },
+    {
+      "id": "cdd7cfbd-3ea5-4a89-9032-f5422c6e0ccf",
+      "created": "2026-07-14 04:06:22",
+      "summary": "사용자는 토스미니앱의 광고 수입이나 유료결제수입을 위해 개인 사업자 등록이 필요하다고 들었다. 인사이동 후 과장을 거쳐 인사과에 겸직 허가를 신청해야 한다고 한다",
+      "seed_cand": true,
+      "n_asst": 1,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "과장과의 관계에서 느끼는 감정이 겸직 허가에 대한 걱정에 어떤 영향을 미치고 있나요?",
+          "replies": [
+            "과장의 행패를 워낙 여기저기서 많이 듣다보니 그 사람이 나의 겸직 허가 요청도 받아들이지 않고 방해나 할 것 같아 걱정이다."
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [
+        "과장"
+      ],
+      "tools": [],
+      "kp_n": 2,
+      "risk": "low"
+    },
+    {
+      "id": "a50afe1a-a1e8-4d00-8b4e-fa2f09a30f09",
+      "created": "2026-07-14 08:00:19",
+      "summary": "사용자는 오늘 사무실에서 빈둥거리다가 ChatGPT에게 아무말이나 하라고 했고, 기운나고 웃기는 말을 해줘서 남기고 싶다고 했다. ChatGPT의 말 중 '오늘 ",
+      "seed_cand": false,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 1,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "빈둥거림이 당신에게 어떤 긍정적인 영향을 주었다고 생각하나요?",
+          "replies": [
+            "프로젝트에 대해 이런 저런 고민들을 할 수 있어서 집에서는 추가적인 고민 없이 바로 실천할 수 있는 것 같아"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "빈둥거림이 프로젝트에 대한 고민에 어떤 식으로 영향을 미쳤다고 느끼나요?",
+          "replies": [
+            "음.... 회사에서 계속 저렇게 안다니려면 프로젝트가 잘 성공해야되니까, 목표도 높게 잡고 이것저것 하고싶은 것도 많이 생각나더라고."
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [],
+      "tools": [
+        "GPT"
+      ],
+      "kp_n": 3,
+      "risk": "low"
+    },
+    {
+      "id": "125040b0-d470-458f-a4fb-83f0a73a40a5",
+      "created": "2026-07-14 08:22:11",
+      "summary": "사용자는 일기장, 메모장, 메모앱에는 자신의 이야기를 잘 하지 못하고, 텔레그램 봇이나 ChatGPT에서는 쉽게 이야기할 수 있는 이유를 고민했다. 그는 현재 자",
+      "seed_cand": false,
+      "n_asst": 1,
+      "enriched": false,
+      "passed": true,
+      "complaint": false,
+      "coaching_q": 0,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "인간과의 대화와 텔레그램 봇이나 ChatGPT와의 대화에서 느끼는 감정이나 반응의 차이는 어떤가요?",
+          "replies": [
+            "패스"
+          ],
+          "enriched": false,
+          "pass_reply": true
+        }
+      ],
+      "people": [],
+      "tools": [
+        "GPT",
+        "Telegram"
+      ],
+      "kp_n": 3,
+      "risk": "low"
+    },
+    {
+      "id": "1513d30c-7c38-4ba0-b250-4b585f2a18de",
+      "created": "2026-07-14 23:43:44",
+      "summary": "사용자는 가끔 저녁에 잠이 드는 경우가 있다고 말했다. 어제는 프로젝트를 하면서 답변을 기다리다가 잠이 들어 밤 11시 50분에 깨어났고, 8시 30분에서 9시 ",
+      "seed_cand": true,
+      "n_asst": 2,
+      "enriched": true,
+      "passed": false,
+      "complaint": false,
+      "coaching_q": 2,
+      "meaning_q": 0,
+      "detail": [
+        {
+          "q": "효율적인 생활을 위해 어떤 구체적인 변화나 시도를 해보고 싶으신가요?",
+          "replies": [
+            "일단 1. 회사에서 해야할 일 미루지 않고 그때그때 문제 처리해서 집에서 신경 안쓰이게 하기 2. 집에서 너무 편한 자세(등을 거의 바닥에 가깝게 기대기)로 작업하진 말기"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        },
+        {
+          "q": "이런 계획을 실행하기 위해 어떤 구체적인 방법이나 전략을 생각하고 계신가요?",
+          "replies": [
+            "잘 모르겠어.. 2번은 무릎을 꿇고 앉아볼까 생각중이야. 그리고 오늘은 회사에서 미루던 일들을 좀 해야겠다"
+          ],
+          "enriched": true,
+          "pass_reply": false
+        }
+      ],
+      "people": [],
+      "tools": [],
+      "kp_n": 3,
+      "risk": "low"
+    }
+  ],
+  "no_question_sessions": [
+    {
+      "created": "2026-07-09 07:37:56",
+      "seed_cand": false,
+      "summary": "사용자는 트위터에서 '인프피 좋은점'이라는 트윗을 보고, 그 내용이 자신과 비슷해 웃겼다고 전했다. 오랫동안 자신을 intp, istp로 알고 있었지만, 이제는 "
+    },
+    {
+      "created": "2026-07-09 13:29:28",
+      "seed_cand": false,
+      "summary": "사용자는 지피터스 AI 스터디 사전 OT를 듣고 있으며, 남자들이 말을 웅얼웅얼 기어다니면서 이야기하는 이유를 이해하지 못하고 있다. 듣는 사람의 입장을 고려하지"
+    },
+    {
+      "created": "2026-07-09 13:37:06",
+      "seed_cand": false,
+      "summary": "사용자는 텔레그램 기억봇의 질문 여부 기준을 낮추고 새로 2개를 작성하고 있지만 여전히 질문을 넘기고 있다고 언급했다. 또한, 봇이 이미 자신이 적은 내용을 이해"
+    },
+    {
+      "created": "2026-07-09 23:01:24",
+      "seed_cand": false,
+      "summary": "사용자는 친한 동기 2명이 승진한 것에 대해 자신은 승진이 몇 년이나 걸릴지 모른다는 생각에 열등감과 불안을 느끼고 있다고 말했다. 이러한 감정으로 인해 착잡함을"
+    },
+    {
+      "created": "2026-07-11 11:21:38",
+      "seed_cand": true,
+      "summary": "앱인토스에서 7월 동안 여름 컨셉으로 바이브코딩한 앱 관련 공모전을 연다고 한다. 최대 800만원 상당의 상금이 걸려 있어 예전에 지피터스 스터디에서 토스 미니앱"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "evaluated_at": "2026-07-16",
+  "window": "2026-07-09 <= created_at < 2026-07-16 07:30+00 pre-luna",
+  "criterion": "reflection_seed_candidate long-term material acceptance >= 70%",
+  "counts": {
+    "keep": 6,
+    "partial": 0,
+    "discard": 1,
+    "unset": 0,
+    "total": 7
+  },
+  "keep_rate": 0.857,
+  "meets_70_percent": true,
+  "reviews": [
+    {
+      "short_id": "S1",
+      "memory_id": "fdbfa1e7-a49b-43d7-bd9d-648055053d9d",
+      "title": "러닝 후 개운함 vs 퇴근 직후 한심함",
+      "judgment": "keep",
+      "note": ""
+    },
+    {
+      "short_id": "S2",
+      "memory_id": "b1686c1b-a38d-46aa-90ac-876572b53a05",
+      "title": "가치관 충돌 — 토스 미니앱 vs 상금",
+      "judgment": "keep",
+      "note": ""
+    },
+    {
+      "short_id": "S3",
+      "memory_id": "018fec06-6d8a-448b-9c24-63a4a62327e0",
+      "title": "거리낌 없는 제품 기준 + 완성 우선",
+      "judgment": "keep",
+      "note": ""
+    },
+    {
+      "short_id": "S4",
+      "memory_id": "7cc9c23d-ae17-4fba-b9a6-d4a152354a22",
+      "title": "사무실 있기 싫어병 — 기죽지 않기 vs 일하기 싫음",
+      "judgment": "keep",
+      "note": ""
+    },
+    {
+      "short_id": "S5",
+      "memory_id": "0eedaf04-f50f-43e3-b595-827cf059f2a3",
+      "title": "원하는 자유 일상의 구체 목록",
+      "judgment": "keep",
+      "note": ""
+    },
+    {
+      "short_id": "S6",
+      "memory_id": "cdd7cfbd-3ea5-4a89-9032-f5422c6e0ccf",
+      "title": "겸직 허가 = 약점 걱정 vs 자유 선호",
+      "judgment": "discard",
+      "note": ""
+    },
+    {
+      "short_id": "S7",
+      "memory_id": "1513d30c-7c38-4ba0-b250-4b585f2a18de",
+      "title": "회사에서 축적·집에서 태우기",
+      "judgment": "keep",
+      "note": "사용자가 생산성에 대해 직접적으로 언급했다면 이것을 seed로 삼는 것은 생산성 코칭으로 얽힌다고 보지 않아도 된다"
+    }
+  ],
+  "policy_note": "User-stated productivity/efficiency goals in original words may be kept as reflection seeds; that is not the same as AI coaching the user toward productivity."
+}

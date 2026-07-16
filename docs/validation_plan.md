@@ -5,14 +5,29 @@
 - 기준일: 2026-07-16
 - 0단계 평가 기반 정리 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
 - 1단계 기억 기질 품질 — `passed` (근거: 105개 기억 및 사용자 직접 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
-- 2단계 회고 씨앗 수집 — `conditional_pass` (근거: 질문 품질/피드백 분리 구현, fixture replay·회귀 테스트 통과, 2026-07-12. 2026-07-16: 30건×3모델 사람 블라인드 평가로 운영 모델 `gpt-5.6-luna` 확정. live 관찰 미완)
+- 2단계 회고 씨앗 수집 — `conditional_pass` (근거: 07-09~pre-luna mini live 22건 — 재료 풍부 16/17·피로 4/17·코칭톤 잔존; seed 후보 사용자 납득 6/7로 품질 축 보강, `reports/validation/stage2_window_20260709_pre_luna.md`·`stage2_seed_review_20260709_pre_luna.json`, 2026-07-16. luna live 종결 관찰 미완)
 - 3단계 Reporter 후보 발견 — `passed` (근거: 20개 후보 사용자 전수 검토, `data/evaluation/reporter_poc_2026-07-11.json`, 2026-07-11)
 - 4단계 Style Editor 후킹/재미 — `conditional_pass` (근거: 10개 후보 사용자 전수 검토, 관찰형·후킹형 선호 9/10, 최종 `too_much` 0/10, `taste_fit=high|medium` 9/10, `data/evaluation/style_editor_poc_2026-07-11.json`, 2026-07-11. 다음 라운드의 `HOOK_TOO_FLAT` 감소 여부는 미검증)
 - 현재 검증 단계: **2단계 회고 씨앗 수집 — `conditional_pass`**
-- 다음 검증 행동: 운영을 `gpt-5.6-luna`로 전환한 뒤 live 신규 기억의 중복 질문·메타 피드백·엔티티 오분류를 관찰한다.
+- 다음 검증 행동: `gpt-5.6-luna` live에서 질문 포함 세션 10건 이상을 모은 뒤, 코칭톤·패스/피로·`open_questions`/`reflection_seed` 채움·중복/저중요도 앵커 재발을 재검증한다.
 - 진입 제한: 질문률을 코드로 강제하지 않으며, `question_outcome` trace로 생성/거절 사유만 관측한다. 모델 비교 runner는 평가 전용이며 production drafts/memory에 쓰지 않는다.
 
 이 블록은 검증 진도의 단일 요약이다. 새 증거가 생기면 상태, 근거, 날짜, 다음 검증 행동을 함께 갱신하며 다음 검증 행동은 항상 하나만 유지한다.
+
+### 2026-07-16 2단계 mini 구간 live 평가 (07-09 → pre-luna)
+
+- 목적: 후속 질문 복구(07-09) 이후·luna 전환 이전 `gpt-4o-mini` 신규 기억으로 2단계 통과 기준 채점
+- 표본: 승인 기억 22건, 질문 포함 세션 17건(대화 assistant turn 기준), 질문 없음 5건
+- 통과 기준:
+  - 재료 풍부화 ≥60% — **pass** 16/17 (94%)
+  - 거부/피로 ≤20% — **fail** 4/17 (24%: `패스` 3 + 명시 불만 1)
+  - `meaning_check` 반복 실패 0 — **fail** (도스토옙스키 재질문, `interpretation_failures.redundant_question`)
+  - 부정 감정 직후 긍정 회상 실패 0 — **pass**
+  - 별로인 질문 유형 감소 — **partial** (07-12 이후 redundant/low_salience 재발 없음, 코칭톤 6/17 잔존)
+- 씨앗 필드: `key_phrases` 22/22, `open_questions` 0/22, `reflection_seed` 본문 0/22, `reflection_seed_candidate` 7/22(플래그만)
+- seed 후보 사용자 검토: 납득 6 / 아님 1 (86% ≥70%) — **품질 축 pass**. S6(겸직 허가)만 제외. S7: 원문에 생산성 언급이 있으면 seed로 남겨도 코칭으로 보지 않음
+- 판정: 구간 평가 `conditional_pass` 유지 — seed *후보 품질*은 보강됐으나 페이로드 공란·피로·코칭톤·meaning_check 실패로 `passed` 불가. luna live 종결은 별도
+- 보고서: `reports/validation/stage2_window_20260709_pre_luna.md`, `reports/validation/stage2_seed_review_20260709_pre_luna.json`
 
 ### 2026-07-16 운영 모델 확정: gpt-5.6-luna
 
