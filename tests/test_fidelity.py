@@ -314,3 +314,108 @@ def test_edit_removal_survives_validate_draft_keyword_merge():
     validated = validate_draft(draft, TOSS_INPUT, excluded_value_tags=excluded)
     patched = apply_edit_patches(instruction, validated, TOSS_INPUT, before=draft)
     assert "사용자 시간 절약" not in patched["value_tags"]
+
+
+def test_filter_grounded_open_questions_drops_invented_and_meta():
+    from conversation_to_memory.memory.fidelity import filter_grounded_open_questions
+
+    source = (
+        "왜 사람들에게 빌리지도 않고 운영을 안할 거라면 "
+        "탁구대를 새로 들이고 간판을 교체한 건지 궁금해. "
+        "무슨일이야"
+    )
+    kept = filter_grounded_open_questions(
+        [
+            "왜 사람들에게 빌리지도 않고 운영을 안할 거라면 탁구대를 새로 들이고 간판을 교체한 건지 궁금해.",
+            "이용할 수 있다면 어떤 방식으로 탁구를 치고 싶은지",
+            "무슨일이야",
+        ],
+        source,
+    )
+    assert kept == [
+        "왜 사람들에게 빌리지도 않고 운영을 안할 거라면 탁구대를 새로 들이고 간판을 교체한 건지 궁금해."
+    ]
+
+
+def test_validate_draft_filters_open_questions_and_meta_key_phrases():
+    source = (
+        "엄마의 늙어가는 것을 알아서 슬픈 건지 "
+        "엄마가 아직도 고생하는 것에 죄책감을 느낀 건지 모르겠어. "
+        "무슨일이야"
+    )
+    draft = {
+        "topic": "엄마",
+        "event_summary": "엄마 피부 감촉",
+        "user_emotions": [],
+        "emotion_evidence": [],
+        "people": ["엄마"],
+        "projects": [],
+        "tags": [],
+        "memory_candidate": "엄마 피부 감촉",
+        "open_questions": [
+            "엄마의 늙어가는 것을 알아서 슬픈 건지 엄마가 아직도 고생하는 것에 죄책감을 느낀 건지",
+            "무슨일이야",
+            "이용할 수 있다면 어떤 방식으로 탁구를 치고 싶은지",
+        ],
+        "key_phrases": ['"생각의 구렁"', '"무슨일이야"'],
+        "interpretation_risk": "low",
+        "unsupported_inferences": [],
+        "needs_followup": False,
+        "followup_question": "",
+    }
+    validated = validate_draft(draft, source)
+    assert validated["open_questions"] == [
+        "엄마의 늙어가는 것을 알아서 슬픈 건지 엄마가 아직도 고생하는 것에 죄책감을 느낀 건지"
+    ]
+    assert all("무슨일" not in phrase for phrase in validated["key_phrases"])
+
+
+def test_apply_edit_patches_removes_only_requested_open_question():
+    from conversation_to_memory.memory.fidelity import apply_edit_patches, verify_edit_requests
+
+    source = (
+        "엄마의 늙어가는 것을 알아서 슬픈 건지 "
+        "엄마가 아직도 고생하는 것에 죄책감을 느낀 건지 모르겠어. "
+        "무슨일이야"
+    )
+    before = {
+        "topic": "엄마의 피부 감촉",
+        "event_summary": "원래 요약은 유지되어야 한다.",
+        "user_emotions": ["멍함"],
+        "emotion_evidence": [],
+        "people": ["엄마"],
+        "projects": [],
+        "tags": ["피부 감촉"],
+        "memory_candidate": "원래 후보",
+        "model_interpretation": "원래 해석",
+        "key_phrases": ["생각의 구렁"],
+        "emerging_themes": ["노화"],
+        "open_questions": [
+            "엄마의 늙어가는 것을 알아서 슬픈 건지 엄마가 아직도 고생하는 것에 죄책감을 느낀 건지",
+            "무슨일이야",
+        ],
+        "reflection_value": "medium",
+        "memory_type": "event",
+        "reflection_seed_candidate": False,
+        "temporal_status": "past",
+        "interpretation_risk": "low",
+        "unsupported_inferences": [],
+    }
+    after = {
+        **before,
+        "topic": "완전히 다른 주제",
+        "event_summary": "재생성된 요약",
+        "memory_type": "observation",
+        "open_questions": [],
+        "user_emotions": ["충격", "슬픔일 가능성"],
+    }
+    instruction = "수정 open questions에 무슨일이야는 삭제해줘"
+    patched = apply_edit_patches(instruction, after, source, before=before)
+    assert patched["open_questions"] == [
+        "엄마의 늙어가는 것을 알아서 슬픈 건지 엄마가 아직도 고생하는 것에 죄책감을 느낀 건지"
+    ]
+    assert patched["topic"] == before["topic"]
+    assert patched["event_summary"] == before["event_summary"]
+    assert patched["memory_type"] == "event"
+    assert patched["user_emotions"] == ["멍함"]
+    assert verify_edit_requests(instruction, before, patched, source) == []

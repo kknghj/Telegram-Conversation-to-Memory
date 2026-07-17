@@ -73,6 +73,10 @@ META_FEEDBACK_PHRASES = (
     "둘 중 무엇이 낫냐고",
     "질문 오류",
     "질문이 맥락",
+    "무슨일이야",
+    "무슨 일이야",
+    "버그야",
+    "고장났어",
 )
 
 CORRECTION_PHRASES = (

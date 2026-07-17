@@ -4,8 +4,10 @@
 
 - 기준일: 2026-07-17
 - 현재 구현 마일스톤: **Phase 2 회고 씨앗 수집 — 질문 품질/피드백 분리 `conditional_pass`** (근거: 07-09~pre-luna mini live + seed 후보 납득 6/7, `reports/validation/stage2_window_20260709_pre_luna.md`·`stage2_seed_review_20260709_pre_luna.json`, 2026-07-16; 운영 모델 luna 확정)
-- 다음 구현 목표: luna live에서 코칭톤·피로·`open_questions`/`reflection_seed` 채움을 관찰하고 Phase 2 종결 여부를 다시 판단한다. 과거 승인 기억은 일괄 재생성하지 않는다.
-- 운영 안정화(2026-07-17): LLM이 문자열 목록 필드에 dict를 넣어도 Telegram 검토 메시지가 깨지지 않도록 `coerce_text_list` 정규화를 추가했다. Phase 2 상태는 유지.
+- 다음 구현 목표: luna live에서 코칭톤·피로·`open_questions`/`reflection_seed` 채움·좁은 수정 안정성을 관찰하고 Phase 2 종결 여부를 다시 판단한다. 과거 승인 기억은 일괄 재생성하지 않는다.
+- 운영 안정화(2026-07-17):
+  - LLM이 문자열 목록 필드에 dict를 넣어도 Telegram 검토 메시지가 깨지지 않도록 `coerce_text_list` 정규화를 추가했다.
+  - luna live에서 `open_questions` 발명·메타 오염(`무슨일이야`)과 좁은 수정 시 타 필드 재작성/과삭제를 확인하고, 원문 가드·질문 LLM 비가드 병합·수정 시 기존 초안 보존·항목 단위 삭제를 넣었다. 근거: `docs/archive/incidents/open_questions_and_edit_stability_2026-07-17.md`. Phase 2 상태는 유지.
 - 선행 상태:
   - Phase 0 기억 아카이브 안정화 — `passed` (근거: `docs/validation_stage_0_1_decisions.md`, 2026-07-09)
   - Phase 1 기억 기질 고도화 — `passed` (근거: 105개 기억의 schema v2 및 핵심 근거 필드 검토, `docs/validation_stage_0_1_decisions.md`, 2026-07-09)

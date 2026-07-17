@@ -524,14 +524,15 @@
       "category": "flow",
       "summary": "open_questions는 사용자 원문의 미해결 질문만. 봇 질문에 대한 반문은 제외.",
       "sources": [
-        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "필드 의미 open_questions", "status": "runtime_prompt"}
+        {"path": "conversation_to_memory/prompts/memory_archive_system_prompt.txt", "location": "필드 의미 open_questions", "status": "runtime_prompt"},
+        {"path": "conversation_to_memory/memory/fidelity.py", "location": "filter_grounded_open_questions / validate_draft", "status": "runtime_code"}
       ],
-      "implemented_in_code": false,
-      "covered_by_test": false,
+      "implemented_in_code": true,
+      "covered_by_test": true,
       "duplicate_of": [],
       "conflicts_with": [],
       "decision": "keep",
-      "reason": "프롬프트 지침. live 오염 시 코드 필터 검토."
+      "reason": "2026-07-17: 원문 substring·메타 필터를 코드로 강제. invent/meta live 오염 대응."
     }
   ]
 }

@@ -90,5 +90,8 @@ information_already_complete는 사용하지 마라. 정확한 요약과 질문 
   "skip_reason": ""
 }
 
+open_questions는 이 단계에서 채우지 마라. 빈 배열 []로 둔다.
+(원문 미해결 질문은 기억 아카이브 초안 단계에서만 원문 인용으로 채운다.)
+
 candidates가 있으면 코드가 검증 후 하나를 고른다. followup_question은 하위 호환용으로 가장 좋은 후보를 넣어도 된다.
 reasoning은 내부용이며 사용자에게 보여주지 않는다.

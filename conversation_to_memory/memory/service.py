@@ -231,6 +231,15 @@ def analyze_recording(
             )
         if context_block:
             user_content_parts.append(context_block)
+        if instruction and previous_draft is not None:
+            user_content_parts.append(
+                "## 기존 초안 (수정 기준)\n"
+                f"{json.dumps(previous_draft, ensure_ascii=False)}\n\n"
+                "요청된 항목만 변경하고, 요청에 없는 필드는 기존 초안 값을 "
+                "그대로 유지하라. 특히 open_questions 항목 하나만 삭제하라는 "
+                "요청이면 다른 open_questions와 요약·태그·유형 필드를 다시 "
+                "쓰지 마라."
+            )
         if instruction:
             user_content_parts.append(
                 "## 수정 요청\n"

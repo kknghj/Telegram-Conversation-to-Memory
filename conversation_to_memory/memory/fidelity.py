@@ -313,6 +313,222 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip())
 
 
+def _normalize_for_quote_match(text: str) -> str:
+    """공백·따옴표를 제거해 원문 포함 여부를 느슨하게 비교한다."""
+    cleaned = (
+        str(text)
+        .replace('"', "")
+        .replace("'", "")
+        .replace("“", "")
+        .replace("”", "")
+        .replace("‘", "")
+        .replace("’", "")
+    )
+    return re.sub(r"\s+", "", cleaned)
+
+
+# 시스템/봇 상호작용 반응 — 기억 씨앗 필드에 넣지 않는다.
+META_INTERACTION_EXACT = frozenset(
+    {
+        "무슨일이야",
+        "무슨 일이야",
+        "뭐야",
+        "왜이래",
+        "왜 이래",
+        "오류",
+        "에러",
+        "버그야",
+        "고장났어",
+        "뭐지",
+        "이게 뭐야",
+    }
+)
+
+META_INTERACTION_PHRASES = (
+    "무슨일이야",
+    "무슨 일이야",
+    "버그야",
+    "고장났어",
+    "오류 났어",
+    "에러 났어",
+)
+
+TARGETED_EDIT_FIELD_PATTERNS: dict[str, re.Pattern[str]] = {
+    "open_questions": re.compile(r"open[_\s-]?questions?|열린\s*질문", re.I),
+    "value_tags": re.compile(r"value[_\s-]?tags?|가치\s*태그", re.I),
+    "temporal_status": re.compile(r"temporal[_\s-]?status|시제", re.I),
+    "reflection_value": re.compile(r"reflection[_\s-]?value|회고\s*가치", re.I),
+    "memory_type": re.compile(r"memory[_\s-]?type|기억\s*유형", re.I),
+    "reflection_seed_candidate": re.compile(
+        r"reflection[_\s-]?seed|장기\s*패턴|reflection\s*seed", re.I
+    ),
+    "people": re.compile(r"\bpeople\b|사람\s*목록", re.I),
+    "key_phrases": re.compile(r"key[_\s-]?phrases?|핵심\s*표현", re.I),
+    "tags": re.compile(r"(?<![a-z_])tags?(?![a-z_])|(?<![가-힣])태그(?!\s*가치)", re.I),
+    "user_emotions": re.compile(r"user[_\s-]?emotions?|감정\s*목록", re.I),
+}
+
+_DRAFT_STABILITY_FIELDS = (
+    "topic",
+    "event_summary",
+    "user_emotions",
+    "emotion_evidence",
+    "people",
+    "projects",
+    "tools",
+    "organizations",
+    "events",
+    "tags",
+    "value_tags",
+    "memory_candidate",
+    "model_interpretation",
+    "key_phrases",
+    "emerging_themes",
+    "open_questions",
+    "reflection_value",
+    "memory_type",
+    "reflection_seed_candidate",
+    "temporal_status",
+    "interpretation_risk",
+    "unsupported_inferences",
+    "question_mode_used",
+)
+
+
+def is_meta_interaction_text(text: str) -> bool:
+    """오류 반응·상태 확인 등 시스템 상호작용 문장인지 판별한다."""
+    normalized = _normalize_text(str(text)).strip("\"'“”‘’")
+    if not normalized:
+        return False
+    if normalized in META_INTERACTION_EXACT:
+        return True
+    if len(normalized) <= 24 and any(
+        phrase in normalized for phrase in META_INTERACTION_PHRASES
+    ):
+        return True
+    return False
+
+
+def is_grounded_user_quote(quote: str, source_text: str) -> bool:
+    """open_questions/key_phrases용: 원문에 실제로 등장하는 인용인지 확인."""
+    probe = _normalize_for_quote_match(quote)
+    source = _normalize_for_quote_match(source_text)
+    if len(probe) < 4 or not source:
+        return False
+    return probe in source
+
+
+def filter_grounded_open_questions(
+    open_questions: Any,
+    source_text: str,
+) -> list[str]:
+    """원문 근거가 있고 메타 상호작용이 아닌 open_questions만 유지한다."""
+    kept: list[str] = []
+    for item in coerce_text_list(open_questions):
+        if is_meta_interaction_text(item):
+            continue
+        if not is_grounded_user_quote(item, source_text):
+            continue
+        if item not in kept:
+            kept.append(item)
+    return kept
+
+
+def filter_meta_key_phrases(key_phrases: Any) -> list[str]:
+    """key_phrases에서 시스템 상호작용 문장을 제거한다."""
+    kept: list[str] = []
+    for item in coerce_text_list(key_phrases):
+        if is_meta_interaction_text(item):
+            continue
+        if item not in kept:
+            kept.append(item)
+    return kept
+
+
+def detect_targeted_edit_fields(edit_instruction: str) -> set[str]:
+    """필드명·한국어 별칭이 명시된 좁은 수정 요청의 대상 필드를 반환한다."""
+    text = edit_instruction.strip()
+    if not text:
+        return set()
+    targets: set[str] = set()
+    for field, pattern in TARGETED_EDIT_FIELD_PATTERNS.items():
+        if pattern.search(text):
+            targets.add(field)
+    return targets
+
+
+def parse_open_question_removals(
+    edit_instruction: str,
+    before: dict,
+) -> list[str]:
+    """수정 요청에서 삭제할 open_questions 항목을 기존 초안 기준으로 추출한다."""
+    text = edit_instruction.strip()
+    existing = coerce_text_list(before.get("open_questions"))
+    if not text or not existing:
+        return []
+    if "open_questions" not in detect_targeted_edit_fields(text):
+        return []
+    if not re.search(r"삭제|지워|제거|없애|빼\s*줘|빼줘", text):
+        return []
+
+    removals: list[str] = []
+    for question in existing:
+        core = question.strip().strip("\"'“”‘’")
+        if not core:
+            continue
+        if core in text:
+            removals.append(question)
+            continue
+        probe = core[:16] if len(core) > 16 else core
+        if len(probe) >= 4 and probe in text:
+            removals.append(question)
+    return list(dict.fromkeys(removals))
+
+
+def stabilize_edit_against_previous(
+    edit_instruction: str,
+    before: dict,
+    after: dict,
+    source_text: str,
+) -> dict:
+    """좁은 필드 수정 요청에서 요청하지 않은 필드를 기존 초안으로 되돌린다."""
+    targets = detect_targeted_edit_fields(edit_instruction)
+    if not targets or not before:
+        result = dict(after)
+        result["open_questions"] = filter_grounded_open_questions(
+            result.get("open_questions"), source_text
+        )
+        result["key_phrases"] = filter_meta_key_phrases(result.get("key_phrases"))
+        return result
+
+    result = dict(after)
+    for field in _DRAFT_STABILITY_FIELDS:
+        if field in targets:
+            continue
+        if field in before:
+            result[field] = before[field]
+
+    if "open_questions" in targets:
+        removals = set(parse_open_question_removals(edit_instruction, before))
+        if removals:
+            result["open_questions"] = [
+                q
+                for q in coerce_text_list(before.get("open_questions"))
+                if q not in removals
+            ]
+        else:
+            result["open_questions"] = filter_grounded_open_questions(
+                after.get("open_questions"), source_text
+            )
+    else:
+        result["open_questions"] = filter_grounded_open_questions(
+            result.get("open_questions"), source_text
+        )
+
+    result["key_phrases"] = filter_meta_key_phrases(result.get("key_phrases"))
+    return result
+
+
 def term_in_source(term: str, source_text: str) -> bool:
     return term in source_text
 
@@ -850,6 +1066,10 @@ def parse_edit_checklist(edit_instruction: str) -> dict[str, object]:
     if excluded_tags:
         expectations["exclude_value_tags"] = excluded_tags
 
+    if "open_questions" in detect_targeted_edit_fields(edit_instruction):
+        if re.search(r"삭제|지워|제거|없애|빼\s*줘|빼줘", edit_instruction):
+            expectations["open_questions_delete"] = True
+
     return expectations
 
 
@@ -912,6 +1132,20 @@ def verify_edit_requests(
                 f"{', '.join(excluded_tags)}, 잔존: {', '.join(still_present)})"
             )
 
+    if expectations.get("open_questions_delete"):
+        removals = parse_open_question_removals(edit_instruction, before)
+        after_questions = coerce_text_list(after.get("open_questions"))
+        still_present = [q for q in removals if q in after_questions]
+        if removals and still_present:
+            unfulfilled.append(
+                "open_questions 삭제 미완료 (잔존: "
+                + ", ".join(still_present)
+                + ")"
+            )
+        elif not removals:
+            # 항목을 특정하지 못했으면, 요청만으로 실패시키지 않는다.
+            pass
+
     return unfulfilled
 
 
@@ -923,9 +1157,15 @@ def apply_edit_patches(
     before: dict | None = None,
 ) -> dict:
     """LLM이 놓친 수정 요청을 결정론적으로 보정한다."""
-    result = enforce_consistency(dict(draft), source_text)
-    expectations = parse_edit_checklist(edit_instruction)
     previous = before or {}
+    result = stabilize_edit_against_previous(
+        edit_instruction,
+        previous,
+        dict(draft),
+        source_text,
+    )
+    result = enforce_consistency(result, source_text)
+    expectations = parse_edit_checklist(edit_instruction)
 
     if expectations.get("temporal_status") == "current":
         result["temporal_status"] = "current"
@@ -953,6 +1193,21 @@ def apply_edit_patches(
         result["value_tags"] = [
             tag for tag in list(result.get("value_tags") or []) if tag not in excluded_tags
         ]
+
+    removals = parse_open_question_removals(edit_instruction, previous)
+    if removals:
+        removal_set = set(removals)
+        base_questions = coerce_text_list(
+            previous.get("open_questions")
+            if previous.get("open_questions") is not None
+            else result.get("open_questions")
+        )
+        result["open_questions"] = [q for q in base_questions if q not in removal_set]
+
+    result["open_questions"] = filter_grounded_open_questions(
+        result.get("open_questions"), source_text
+    )
+    result["key_phrases"] = filter_meta_key_phrases(result.get("key_phrases"))
 
     return enforce_consistency(result, source_text)
 
@@ -1030,6 +1285,12 @@ def validate_draft(
     validated["tools"] = reclassified["tools"]
     validated["events"] = reclassified["events"]
     validated["tags"] = reclassified["tags"]
+
+    # open_questions: 원문 인용만 유지. 메타 상호작용·발명 문장 제거.
+    validated["open_questions"] = filter_grounded_open_questions(
+        validated.get("open_questions"), source_text
+    )
+    validated["key_phrases"] = filter_meta_key_phrases(validated.get("key_phrases"))
 
     # 시제 분류: 미래 사건을 완료 사실로 단정하지 않도록 표시.
     validated["temporal_status"] = infer_temporal_status(source_text)

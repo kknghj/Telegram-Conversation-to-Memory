@@ -267,6 +267,7 @@ def test_classify_followup_response_kinds():
         classify_followup_response("둘 중 무엇이 낫냐고 물으려면 같은 격이어야 해.")
         == "meta_feedback"
     )
+    assert classify_followup_response("무슨일이야") == "meta_feedback"
     assert classify_followup_response("수정 GPT는 people이 아니야.") == "correction"
 
 

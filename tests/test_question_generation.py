@@ -186,13 +186,17 @@ def test_reflective_expansion_signal_detects_product_feedback():
     assert "새로운 생각" in question
 
 
-def test_merge_question_into_draft_appends_open_questions():
+def test_merge_question_into_draft_does_not_append_open_questions():
+    """질문 LLM의 open_questions는 Archivist 필드를 오염시키지 않는다."""
     draft = {"open_questions": ["기존 질문"]}
     merged = merge_question_into_draft(
         draft,
-        {"open_questions": ["새 질문"], "possible_memory_value": "high"},
+        {
+            "open_questions": ["이용할 수 있다면 어떤 방식으로 탁구를 치고 싶은지"],
+            "possible_memory_value": "high",
+        },
     )
-    assert "새 질문" in merged["open_questions"]
+    assert merged["open_questions"] == ["기존 질문"]
     assert merged["reflection_value"] == "high"
 
 

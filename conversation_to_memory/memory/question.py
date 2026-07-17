@@ -753,15 +753,12 @@ def generate_question(
 
 
 def merge_question_into_draft(draft: dict, question_result: dict) -> dict:
-    """질문 결과에서 draft에 반영할 필드를 병합."""
+    """질문 결과에서 draft에 반영할 필드를 병합.
+
+    open_questions는 Archivist(원문 추출) 전용이다. 질문 LLM이 만든 값은
+    병합하지 않는다 — 발명·확장 질문이 씨앗 필드를 오염시키는 것을 막는다.
+    """
     merged = dict(draft)
-    open_q = question_result.get("open_questions") or []
-    if open_q:
-        existing = list(merged.get("open_questions") or [])
-        for item in open_q:
-            if item and item not in existing:
-                existing.append(item)
-        merged["open_questions"] = existing
 
     value = question_result.get("possible_memory_value")
     if value in ("low", "medium", "high"):
