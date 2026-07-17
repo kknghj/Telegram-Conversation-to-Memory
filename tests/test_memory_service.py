@@ -97,6 +97,28 @@ def test_normalize_draft_new_fields_coerced():
     assert draft["memory_type"] == "reflection_seed"
 
 
+def test_normalize_draft_coerces_dict_list_items_to_strings():
+    draft = normalize_draft(
+        {
+            "unsupported_inferences": [
+                {
+                    "type": "unsupported_positive_reframing",
+                    "claim": "지원받았다",
+                }
+            ],
+            "user_emotions": [{"emotion": "피로"}],
+            "emotion_evidence": [{"quote": "너무 힘들다"}],
+            "emerging_themes": [{"label": "민원 스트레스"}],
+        }
+    )
+    assert draft["unsupported_inferences"] == [
+        "unsupported_positive_reframing: 지원받았다"
+    ]
+    assert draft["user_emotions"] == ["피로"]
+    assert draft["emotion_evidence"] == ["너무 힘들다"]
+    assert draft["emerging_themes"] == ["민원 스트레스"]
+
+
 def test_normalize_draft_invalid_temporal_status_falls_back():
     draft = normalize_draft({"temporal_status": "someday"})
     assert draft["temporal_status"] == "past"
@@ -125,6 +147,29 @@ def test_format_review_message_shows_future_and_seed_notes():
     assert "시제" in text
     assert "장기 패턴" in text
     assert "다크패턴 거부" in text
+
+
+def test_format_review_message_accepts_dict_unsupported_inferences():
+    from conversation_to_memory.memory.service import format_review_message
+
+    text = format_review_message(
+        {
+            "event_summary": "요약",
+            "topic": "t",
+            "user_emotions": [],
+            "emotion_evidence": [],
+            "people": [],
+            "projects": [],
+            "tags": [],
+            "memory_candidate": "본문",
+            "interpretation_risk": "medium",
+            "unsupported_inferences": [
+                {"type": "topic_shift", "claim": "관리자 역할 일반화"}
+            ],
+        }
+    )
+    assert "원문 근거 약한 추론" in text
+    assert "topic_shift: 관리자 역할 일반화" in text
 
 
 def test_format_review_message_shows_model_interpretation():

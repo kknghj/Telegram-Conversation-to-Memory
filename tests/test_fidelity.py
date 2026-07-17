@@ -74,6 +74,26 @@ def test_bad_draft_detects_growth_narrative():
     assert validated["interpretation_risk"] in ("medium", "high")
 
 
+def test_validate_draft_coerces_structured_list_items():
+    draft = {
+        **GOOD_DRAFT,
+        "unsupported_inferences": [
+            {"type": "unsupported_positive_reframing", "claim": "지원받았다"}
+        ],
+        "user_emotions": [{"emotion": "억울함"}],
+        "emerging_themes": [{"label": "민원"}],
+    }
+    validated = validate_draft(draft, USER_INPUT)
+
+    assert all(isinstance(item, str) for item in validated["unsupported_inferences"])
+    assert "unsupported_positive_reframing: 지원받았다" in validated[
+        "unsupported_inferences"
+    ]
+    assert validated["user_emotions"] == ["억울함"]
+    assert validated["emerging_themes"] == ["민원"]
+    assert all(isinstance(item, str) for item in validated["user_emotions"])
+
+
 def test_good_draft_emotions_match_source():
     validated = validate_draft(GOOD_DRAFT, USER_INPUT)
     for emotion in validated["user_emotions"]:

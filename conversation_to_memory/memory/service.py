@@ -11,6 +11,7 @@ from openai import OpenAI
 
 from conversation_to_memory.memory.fidelity import (
     apply_edit_patches,
+    coerce_text_list,
     enforce_consistency,
     parse_excluded_value_tags,
     validate_draft,
@@ -97,7 +98,9 @@ def _build_context_block(
     if recent_context:
         parts.append("## 최근 기록 맥락")
         for idx, ctx in enumerate(recent_context[-3:], 1):
-            parts.append(f"{idx}. 사용자: {' '.join(ctx.get('user_texts', []))}")
+            parts.append(
+                f"{idx}. 사용자: {' '.join(coerce_text_list(ctx.get('user_texts')))}"
+            )
             parts.append(f"   요약: {ctx.get('event_summary', '')}")
 
     if cancelled_draft:
@@ -117,23 +120,29 @@ def _build_context_block(
     return "\n".join(parts)
 
 
+_STRING_LIST_FIELDS = (
+    "user_emotions",
+    "emotion_evidence",
+    "people",
+    "projects",
+    "tools",
+    "organizations",
+    "events",
+    "tags",
+    "value_tags",
+    "key_phrases",
+    "emerging_themes",
+    "open_questions",
+    "question_mode_used",
+    "unsupported_inferences",
+)
+
+
 def normalize_draft(data: dict) -> dict:
     draft = {**DEFAULT_DRAFT}
     draft.update(data)
-    draft["user_emotions"] = list(draft.get("user_emotions") or [])
-    draft["emotion_evidence"] = list(draft.get("emotion_evidence") or [])
-    draft["people"] = list(draft.get("people") or [])
-    draft["projects"] = list(draft.get("projects") or [])
-    draft["tools"] = list(draft.get("tools") or [])
-    draft["organizations"] = list(draft.get("organizations") or [])
-    draft["events"] = list(draft.get("events") or [])
-    draft["tags"] = list(draft.get("tags") or [])
-    draft["value_tags"] = list(draft.get("value_tags") or [])
-    draft["key_phrases"] = list(draft.get("key_phrases") or [])
-    draft["emerging_themes"] = list(draft.get("emerging_themes") or [])
-    draft["open_questions"] = list(draft.get("open_questions") or [])
-    draft["question_mode_used"] = list(draft.get("question_mode_used") or [])
-    draft["unsupported_inferences"] = list(draft.get("unsupported_inferences") or [])
+    for field in _STRING_LIST_FIELDS:
+        draft[field] = coerce_text_list(draft.get(field))
     draft["model_interpretation"] = str(draft.get("model_interpretation") or "").strip()
 
     reflection_value = draft.get("reflection_value", "medium")
@@ -193,7 +202,7 @@ def analyze_recording(
     client = _get_client()
     selected_model = resolve_memory_model(model)
     system = _load_prompt("memory_archive_system_prompt.txt")
-    source_text = "\n".join(user_texts)
+    source_text = "\n".join(coerce_text_list(user_texts))
     last_meta: dict[str, Any] = {
         "usage": {},
         "raw_usage": None,
@@ -364,7 +373,7 @@ def format_review_message(memory: dict) -> str:
     if memory.get("reflection_seed_candidate"):
         seed_note = "\n🌱 장기 패턴(가치관·판단 기준) 후보로 표시되었습니다.\n"
 
-    unsupported = memory.get("unsupported_inferences") or []
+    unsupported = coerce_text_list(memory.get("unsupported_inferences"))
     unsupported_note = ""
     if unsupported:
         unsupported_note = (

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import re
+from typing import Any
 
 FORBIDDEN_INFERENCE_TERMS = (
     "견뎌",
@@ -36,6 +38,67 @@ POSITIVE_REFRAMING_TERMS = (
 ROLE_GENERALIZATION_RE = re.compile(r"관리자.{0,12}역할")
 INFERRED_EMOTION_RE = re.compile(r"복잡한\s*감정")
 ACTOR_POSITIVE_RE = re.compile(r"(팀장|상사|부모|교사|관리자).{0,12}(지원|배려|도움|격려)")
+
+_TEXT_LIST_DICT_KEYS = (
+    "text",
+    "claim",
+    "inference",
+    "label",
+    "phrase",
+    "quote",
+    "emotion",
+    "reason",
+    "name",
+    "value",
+    "content",
+)
+
+
+def coerce_text_item(item: Any) -> str:
+    """LLM이 문자열 대신 dict/기타 타입을 줘도 join·표시 가능한 문자열로 만든다."""
+    if item is None:
+        return ""
+    if isinstance(item, str):
+        return item.strip()
+    if isinstance(item, (int, float, bool)):
+        return str(item)
+    if isinstance(item, dict):
+        kind = item.get("type") or item.get("kind") or item.get("category")
+        claim = None
+        for key in _TEXT_LIST_DICT_KEYS:
+            value = item.get(key)
+            if isinstance(value, str) and value.strip():
+                claim = value.strip()
+                break
+        if isinstance(kind, str) and kind.strip() and claim:
+            return f"{kind.strip()}: {claim}"
+        if claim:
+            return claim
+        try:
+            return json.dumps(item, ensure_ascii=False)
+        except (TypeError, ValueError):
+            return str(item).strip()
+    return str(item).strip()
+
+
+def coerce_text_list(value: Any) -> list[str]:
+    """문자열 목록 필드를 안전하게 list[str]로 정규화한다."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        return [text] if text else []
+    if not isinstance(value, (list, tuple, set)):
+        text = coerce_text_item(value)
+        return [text] if text else []
+
+    result: list[str] = []
+    for item in value:
+        text = coerce_text_item(item)
+        if text:
+            result.append(text)
+    return result
+
 
 # 미래/미완료 사건을 나타내는 시제 표지. 이 표현이 있으면 완료된 사실처럼 요약하지 않는다.
 FUTURE_TENSE_MARKERS: tuple[str, ...] = (
@@ -260,8 +323,8 @@ def _combined_output_text(draft: dict) -> str:
         draft.get("event_summary", ""),
         draft.get("memory_candidate", ""),
         draft.get("model_interpretation", ""),
-        " ".join(draft.get("user_emotions", [])),
-        " ".join(draft.get("emerging_themes", [])),
+        " ".join(coerce_text_list(draft.get("user_emotions"))),
+        " ".join(coerce_text_list(draft.get("emerging_themes"))),
     ]
     return " ".join(str(v) for v in searchable_fields)
 
@@ -327,8 +390,7 @@ def detect_unsupported_inferences(draft: dict, source_text: str) -> list[str]:
             if item not in found:
                 found.append(item)
 
-    existing = draft.get("unsupported_inferences", [])
-    for item in existing:
+    for item in coerce_text_list(draft.get("unsupported_inferences")):
         if item not in found:
             found.append(item)
 
@@ -916,11 +978,30 @@ def validate_draft(
     추가로 가치관 태그, 프로젝트 엔티티, 시제, reflection_seed 후보를 보강한다.
     excluded_value_tags가 있으면 해당 태그는 병합·유지하지 않는다 (수정 요청 반영).
     """
-    unsupported = detect_unsupported_inferences(draft, source_text)
-    risk = assess_interpretation_risk(draft, source_text)
     excluded = set(excluded_value_tags or [])
 
     validated = dict(draft)
+    for field in (
+        "user_emotions",
+        "emotion_evidence",
+        "people",
+        "projects",
+        "tools",
+        "organizations",
+        "events",
+        "tags",
+        "value_tags",
+        "key_phrases",
+        "emerging_themes",
+        "open_questions",
+        "question_mode_used",
+        "unsupported_inferences",
+    ):
+        if field in validated:
+            validated[field] = coerce_text_list(validated.get(field))
+
+    unsupported = detect_unsupported_inferences(validated, source_text)
+    risk = assess_interpretation_risk(validated, source_text)
     validated["unsupported_inferences"] = unsupported
     validated["interpretation_risk"] = risk
 
@@ -962,6 +1043,25 @@ def validate_draft(
         or any(marker in _normalize_text(source_text) for marker in HUMAN_IDEAL_MARKERS)
     ):
         validated["memory_type"] = "reflection_seed"
+
+    # 병합·재분류 후에도 문자열 목록 형태를 유지한다.
+    for field in (
+        "user_emotions",
+        "emotion_evidence",
+        "people",
+        "projects",
+        "tools",
+        "organizations",
+        "events",
+        "tags",
+        "value_tags",
+        "key_phrases",
+        "emerging_themes",
+        "open_questions",
+        "question_mode_used",
+        "unsupported_inferences",
+    ):
+        validated[field] = coerce_text_list(validated.get(field))
 
     return enforce_consistency(validated, source_text)
 
